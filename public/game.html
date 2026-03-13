@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sea Drift Survive — Captain's Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; image-rendering:pixelated; }
+html, body { width:100%; height:100%; background:#040c14; display:flex; align-items:center; justify-content:center; overflow:hidden; font-family:'Silkscreen', cursive; }
+
+#wrap { position:relative; display:inline-block; border:4px solid #1a3a4a; box-shadow:0 0 40px rgba(0,150,200,0.15), 0 0 80px rgba(0,0,0,0.8); }
+canvas { display:block; image-rendering:pixelated; background:#091e30; }
+
+/* ── HUD ── */
+#hud { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start; padding:10px 12px; pointer-events:none; z-index:10; gap:6px; }
+.hud-group { display:flex; flex-direction:column; gap:6px; }
+.hud-card { background:rgba(6,18,30,0.82); border-left:3px solid #e0c060; padding:5px 10px; backdrop-filter:blur(4px); box-shadow:2px 2px 6px rgba(0,0,0,0.5); min-width:70px; }
+.hud-card.blue { border-left-color:#3399ff; }
+.hud-card.green { border-left-color:#2ecc40; }
+.hud-lbl { font-size:7px; color:#4a8fa0; letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:2px; }
+.hud-val { font-size:13px; color:#e0c060; text-shadow:1px 1px 0 #000; display:block; }
+.bar-wrap { width:90px; height:8px; background:#05101a; border:1px solid #1a4a6a; margin-top:3px; overflow:hidden; }
+#healthFill  { height:100%; background:linear-gradient(90deg,#2ecc40,#a0ff40); transition:width 0.3s; }
+#abilityFill { height:100%; background:linear-gradient(90deg,#3399ff,#60ffff); transition:width 0.2s; }
+
+/* ── OVERLAYS ── */
+#overlay,#shopScreen,#lbScreen,#htpScreen {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  background:radial-gradient(ellipse at center, rgba(14,38,62,0.97) 0%, rgba(4,12,20,0.99) 100%);
+  pointer-events:all; overflow-y:auto; padding:18px 16px; z-index:20;
+}
+/* center vertically for main menu and leaderboard */
+#overlay, #lbScreen { justify-content:center; }
+
+/* ── TITLE ── */
+.px-title { font-size:28px; color:#e0c060; letter-spacing:3px; text-shadow:3px 3px 0 #1a3a4a, 0 0 20px rgba(224,192,96,0.3); margin-bottom:4px; animation:float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
+.px-sub { font-size:8px; color:#4a8fa0; letter-spacing:3px; text-transform:uppercase; margin-bottom:14px; }
+
+/* ── BUTTONS ── */
+.px-btn { margin-top:10px; padding:10px 26px; background:#e0c060; color:#0a1020; border:none; font-family:inherit; font-size:12px; cursor:pointer; border-bottom:4px solid #7a4000; border-right:4px solid #7a4000; letter-spacing:1px; transition:filter 0.1s; }
+.px-btn:hover { filter:brightness(1.15); }
+.px-btn:active { border-width:2px; transform:translate(2px,2px); }
+.px-btn-sm { margin-top:6px; padding:6px 16px; background:transparent; color:#4a8fa0; border:1px solid #1a3a5a; font-family:inherit; font-size:9px; letter-spacing:1px; cursor:pointer; }
+.px-btn-sm:hover { border-color:#4a8fa0; color:#e0c060; }
+
+/* ── SHOP ── */
+.shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; max-width:310px; width:100%; }
+.shop-card { background:rgba(10,26,42,0.85); border:2px solid #1a4a6a; padding:10px 12px; cursor:pointer; text-align:left; transition:border-color 0.15s, background 0.15s; }
+.shop-card:hover:not(.locked) { background:rgba(15,40,60,0.95); border-color:#e0c060; }
+.shop-card.locked { opacity:0.35; cursor:not-allowed; }
+.sc-icon { font-size:18px; }
+.sc-name { font-size:8px; color:#e0c060; letter-spacing:1px; margin:3px 0 2px; display:block; }
+.sc-desc { font-size:7px; color:#4a7a8a; line-height:1.5; display:block; }
+.sc-cost { font-size:9px; color:#ffd700; margin-top:4px; display:block; }
+
+/* ── LEADERBOARD ── */
+.lb-row { display:flex; gap:8px; align-items:center; padding:6px 10px; border-bottom:1px solid #0a2030; width:100%; max-width:290px; }
+.lb-rank { font-size:10px; color:#4a8fa0; width:24px; text-align:right; }
+.lb-name { font-size:9px; color:#e0c060; flex:1; }
+.lb-score { font-size:9px; color:#ffd700; width:70px; text-align:right; }
+.lb-dist  { font-size:8px; color:#4a8fa0; width:48px; text-align:right; }
+
+/* ── HOW TO PLAY ── */
+.htp-section { width:100%; max-width:300px; margin-bottom:10px; }
+.htp-heading { font-size:7px; color:#4a8fa0; letter-spacing:2px; text-transform:uppercase; border-bottom:1px solid #1a3a4a; padding-bottom:3px; margin-bottom:7px; }
+.htp-row { display:flex; align-items:flex-start; gap:8px; margin-bottom:5px; }
+.htp-key { background:#0a1a2a; border:1px solid #1a4a6a; color:#e0c060; font-size:8px; padding:3px 7px; white-space:nowrap; flex-shrink:0; }
+.htp-desc { font-size:8px; color:#7a9aaa; line-height:1.7; }
+.htp-enemy { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.htp-em { font-size:20px; width:26px; text-align:center; flex-shrink:0; }
+.htp-einfo { font-size:8px; color:#7a9aaa; line-height:1.5; }
+.htp-einfo b { color:#b8d4e0; }
+
+/* ── TUTORIAL ── */
+#tutorialScreen {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  display:none; flex-direction:column; align-items:center; justify-content:flex-end;
+  padding-bottom:28px; z-index:30; pointer-events:none;
+  background:rgba(0,0,0,0.45);
+}
+.tut-card {
+  background:rgba(6,16,28,0.97); border:2px solid #e0c060;
+  padding:16px 18px; max-width:300px; width:92%;
+  box-shadow:0 0 30px rgba(224,192,96,0.25);
+  pointer-events:all;
+  animation:tut-in 0.3s ease-out;
+}
+@keyframes tut-in { from{ transform:translateY(24px);opacity:0; } to{ transform:translateY(0);opacity:1; } }
+.tut-step  { font-size:7px; color:#4a8fa0; letter-spacing:2px; text-transform:uppercase; margin-bottom:5px; display:block; text-align:center; }
+.tut-icon  { font-size:32px; margin-bottom:6px; display:block; text-align:center; }
+.tut-title { font-size:12px; color:#e0c060; letter-spacing:1px; margin-bottom:7px; display:block; text-align:center; }
+.tut-body  { font-size:8px; color:#8ab0c0; line-height:2.0; text-align:center; margin-bottom:12px; }
+.tut-body b { color:#e0d090; }
+.tut-body .key { background:#0a1a2a; border:1px solid #2a5060; color:#e0c060; font-size:8px; padding:2px 6px; display:inline-block; }
+.tut-actions { display:flex; justify-content:space-between; align-items:center; }
+.tut-dots { display:flex; gap:5px; }
+.tut-dot  { width:7px; height:7px; background:#1a3050; border:1px solid #2a5060; }
+.tut-dot.active { background:#e0c060; border-color:#f0d070; }
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="c"></canvas>
+
+<!-- ── HUD ── -->
+<div id="hud">
+  <!-- left group: distance + score -->
+  <div class="hud-group">
+    <div class="hud-card">
+      <span class="hud-lbl">Distance</span>
+      <span class="hud-val" id="hvDist">0 nm</span>
+    </div>
+    <div class="hud-card">
+      <span class="hud-lbl">Score</span>
+      <span class="hud-val" id="hvScore">0</span>
+    </div>
+  </div>
+  <!-- center group: hull + special -->
+  <div class="hud-group" style="align-items:center;">
+    <div class="hud-card green" style="min-width:100px;">
+      <span class="hud-lbl">Hull</span>
+      <div class="bar-wrap"><div id="healthFill" style="width:100%"></div></div>
+    </div>
+    <div class="hud-card blue" style="min-width:100px;">
+      <span class="hud-lbl" id="abilityLbl">Special</span>
+      <div class="bar-wrap"><div id="abilityFill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <!-- right group: gold + wave speed + mute -->
+  <div class="hud-group" style="align-items:flex-end;">
+    <div class="hud-card">
+      <span class="hud-lbl">Gold</span>
+      <span class="hud-val" id="hvGold">30</span>
+    </div>
+    <div class="hud-card">
+      <span class="hud-lbl">Speed</span>
+      <span class="hud-val" id="hvSpeed">1x</span>
+    </div>
+    <div class="hud-card" style="pointer-events:all;cursor:pointer;text-align:center;min-width:auto;padding:5px 8px;" onclick="toggleMuteBtn()" title="Toggle sound">
+      <span id="muteIcon" style="font-size:14px;">🔊</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN MENU ── -->
+<div id="overlay">
+  <div style="font-size:42px;margin-bottom:8px;animation:float 3s ease-in-out infinite;">⚓</div>
+  <div class="px-title">SEA DRIFT</div>
+  <div class="px-sub">Captain's Edition</div>
+  <button class="px-btn" onclick="AU.SFX.menuClick();startGame()">▶ SET SAIL</button>
+  <button class="px-btn-sm" onclick="AU.SFX.menuClick();showHtp()">📖 HOW TO PLAY</button>
+  <button class="px-btn-sm" onclick="AU.SFX.menuClick();showLB()">🏆 LEADERBOARD</button>
+</div>
+
+<!-- ── HOW TO PLAY ── -->
+<div id="htpScreen" style="display:none;">
+  <div class="px-title" style="font-size:18px;animation:none;">📖 HOW TO PLAY</div>
+  <div class="px-sub">Captain's Guide</div>
+
+  <div class="htp-section">
+    <div class="htp-heading">⌨ Controls</div>
+    <div class="htp-row"><span class="htp-key">← →</span><span class="htp-desc">Steer ship left and right</span></div>
+    <div class="htp-row"><span class="htp-key">↑ / E</span><span class="htp-desc">Fire special ability (when charged)</span></div>
+    <div class="htp-row"><span class="htp-key">G</span><span class="htp-desc">Open upgrade shop mid-run</span></div>
+  </div>
+
+  <div class="htp-section">
+    <div class="htp-heading">🎯 Objective</div>
+    <div style="font-size:8px;color:#7a9aaa;line-height:2;">
+      Your ship sails forward automatically.<br>
+      <span style="color:#e0c060;">Distance = score</span> — sail as far as you can!<br>
+      Shoot enemies for <span style="color:#ffd700;">bonus score &amp; gold</span>.<br>
+      Buy upgrades from the shop mid-run.<br>
+      The sea speeds up the farther you sail.
+    </div>
+  </div>
+
+  <div class="htp-section">
+    <div class="htp-heading">🌊 Objects at Sea</div>
+    <div class="htp-enemy"><span class="htp-em">📦</span><div class="htp-einfo"><b>Crate</b> — shoot it twice to earn gold.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🛡</span><div class="htp-einfo"><b>Shield</b> — sail through to activate a free shield.</div></div>
+    <div class="htp-enemy"><span class="htp-em">⚡</span><div class="htp-einfo"><b>Rapid Fire</b> — sail through for 10s rapid fire.</div></div>
+    <div class="htp-enemy"><span class="htp-em">❤️</span><div class="htp-einfo"><b>Repair Kit</b> — sail through to restore 30 HP.</div></div>
+  </div>
+
+  <div class="htp-section">
+    <div class="htp-heading">⚡ Special Abilities</div>
+    <div class="htp-row"><span class="htp-key" style="min-width:52px;text-align:center;">LV 1</span><span class="htp-desc"><b style="color:#e0c060;">BARRAGE</b> — 10 cannonballs in a wide spread</span></div>
+    <div class="htp-row"><span class="htp-key" style="min-width:52px;text-align:center;">LV 2</span><span class="htp-desc"><b style="color:#4080ff;">SHIELD</b> — blocks all damage for ~4 seconds</span></div>
+    <div class="htp-row"><span class="htp-key" style="min-width:52px;text-align:center;">LV 3</span><span class="htp-desc"><b style="color:#60c0ff;">MAELSTROM</b> — stuns every enemy on screen</span></div>
+    <div style="font-size:7px;color:#446;margin-top:3px;">Upgrade SPECIAL LV in the shop to unlock higher tiers.</div>
+  </div>
+
+  <div class="htp-section">
+    <div class="htp-heading">👾 Enemies</div>
+    <div class="htp-enemy"><span class="htp-em">🦀</span><div class="htp-einfo"><b>Crab</b> — slow, 1-hit kill.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🪼</span><div class="htp-einfo"><b>Jellyfish</b> — fast, 1-hit kill.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🐡</span><div class="htp-einfo"><b>Blowfish</b> — bursts into 6 bullets when it fires.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🦈</span><div class="htp-einfo"><b>Shark</b> — charges directly at you once in range.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🚢</span><div class="htp-einfo"><b>Pirate Ship</b> — fires aimed cannonballs.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🐙</span><div class="htp-einfo"><b>Octopus</b> — fires a 3-way spread shot.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🐍</span><div class="htp-einfo"><b>Eel</b> — poison bullets damage over time.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🦑</span><div class="htp-einfo"><b>Squid</b> — fires homing projectiles.</div></div>
+    <div class="htp-enemy"><span class="htp-em">🐚</span><div class="htp-einfo"><b>Nautilus</b> — has a blue shield bar. Break it first!</div></div>
+    <div class="htp-enemy"><span class="htp-em">🐳</span><div class="htp-einfo"><b>Whale Boss</b> — massive, only at great depth!</div></div>
+  </div>
+
+  <button class="px-btn" style="font-size:10px;" onclick="hideHtp()">← BACK TO MENU</button>
+</div>
+
+<!-- ── SHOP ── -->
+<div id="shopScreen" style="display:none;">
+  <div class="px-title" style="font-size:16px;animation:none;">⚓ HARBOR SHOP</div>
+  <div class="px-sub" id="shopSubTxt">Mid-Run Upgrades</div>
+  <div style="font-size:10px;color:#e0c060;margin-bottom:10px;">GOLD: <span id="shopGoldVal">0</span></div>
+  <div class="shop-grid" id="shopGrid"></div>
+  <button class="px-btn" style="font-size:10px;margin-top:12px;" onclick="closeShop()">▶ CONTINUE SAILING</button>
+</div>
+
+<!-- ── LEADERBOARD ── -->
+<div id="lbScreen" style="display:none;">
+  <div class="px-title" style="font-size:20px;">🏆 LEADERBOARD</div>
+  <div class="px-sub">Top Captains</div>
+  <div id="lbList" style="width:100%;max-width:300px;"></div>
+  <button class="px-btn-sm" onclick="hideLB()">← BACK</button>
+</div>
+
+<!-- ── TUTORIAL ── -->
+<div id="tutorialScreen">
+  <div class="tut-card" id="tutCard">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+</div><!-- end #wrap -->
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = 360, H = 540;
+canvas.width = W; canvas.height = H;
+
+function applyScale(){
+  const s=Math.max(1,Math.min(Math.floor(Math.min(window.innerWidth/W,(window.innerHeight-20)/H)),3));
+  canvas.style.width=W*s+'px'; canvas.style.height=H*s+'px';
+}
+applyScale(); window.addEventListener('resize',applyScale);
+
+const FONT = "'Silkscreen', cursive";
+
+const PAL={
+  sea:['#091e30','#0b2640','#0d2e4a','#0f3656'],
+  foam:'#b0d8e8', foamD:'#6098b0',
+  hull:'#c07018', deck:'#e8a030', dark:'#783808', mast:'#986028',
+  sailW:'#f0e8d0', sailS:'#c0b070',
+  bulletP:'#ffe830', bulletE:'#ff3810', bulletE2:'#ff8030', bulletPoison:'#80ff40',
+  gold:'#ffd700', hp:'#20cc40', hpLow:'#cc2020', shieldAura:'#4080ff'
+};
+
+// ── AUDIO ENGINE (Web Audio API — no external files) ──
+const AU = (() => {
+  let ctx = null;
+  let masterGain = null;
+  let musicGain = null;
+  let sfxGain = null;
+  let musicNodes = [];
+  let musicRunning = false;
+  let musicScheduled = 0;
+  let muted = false;
+
+  function init() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain(); masterGain.gain.value = 0.7; masterGain.connect(ctx.destination);
+    musicGain  = ctx.createGain(); musicGain.gain.value  = 0.22; musicGain.connect(masterGain);
+    sfxGain    = ctx.createGain(); sfxGain.gain.value    = 0.55; sfxGain.connect(masterGain);
+  }
+
+  // ── Noise buffer helper ──
+  function makeNoise(dur) {
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  // ── Generic synth helpers ──
+  function osc(type, freq, start, dur, gainVal, dest, freqEnd) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, start);
+    if (freqEnd !== undefined) o.frequency.linearRampToValueAtTime(freqEnd, start + dur);
+    g.gain.setValueAtTime(gainVal, start);
+    g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+    o.connect(g); g.connect(dest);
+    o.start(start); o.stop(start + dur);
+  }
+
+  function noise(start, dur, gainVal, filterFreq, dest) {
+    const src = ctx.createBufferSource();
+    src.buffer = makeNoise(dur + 0.05);
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = filterFreq; f.Q.value = 1.5;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(gainVal, start);
+    g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+    src.connect(f); f.connect(g); g.connect(dest);
+    src.start(start); src.stop(start + dur);
+  }
+
+  // ── SFX ──
+  const SFX = {
+    shoot() {
+      init();
+      const t = ctx.currentTime;
+      osc('square', 520, t, 0.04, 0.35, sfxGain, 180);
+      noise(t, 0.04, 0.15, 2200, sfxGain);
+    },
+    hit() {
+      init();
+      const t = ctx.currentTime;
+      osc('sawtooth', 260, t, 0.06, 0.4, sfxGain, 80);
+      noise(t, 0.06, 0.25, 800, sfxGain);
+    },
+    enemyDie() {
+      init();
+      const t = ctx.currentTime;
+      osc('square',  360, t,      0.05, 0.3, sfxGain, 120);
+      osc('sawtooth',180, t+0.04, 0.08, 0.3, sfxGain, 60);
+      noise(t, 0.12, 0.3, 600, sfxGain);
+    },
+    bossDie() {
+      init();
+      const t = ctx.currentTime;
+      [0, 0.07, 0.14, 0.22].forEach((d, i) => {
+        osc('sawtooth', 300 - i*50, t+d, 0.15, 0.5, sfxGain, 40);
+        noise(t+d, 0.18, 0.4, 400 - i*60, sfxGain);
+      });
+    },
+    playerHit() {
+      init();
+      const t = ctx.currentTime;
+      osc('sawtooth', 140, t, 0.18, 0.55, sfxGain, 60);
+      noise(t, 0.12, 0.45, 300, sfxGain);
+    },
+    powerup() {
+      init();
+      const t = ctx.currentTime;
+      [0, 0.07, 0.14].forEach((d, i) => osc('sine', 440 + i*180, t+d, 0.12, 0.35, sfxGain));
+    },
+    crateBreak() {
+      init();
+      const t = ctx.currentTime;
+      osc('square', 200, t, 0.08, 0.3, sfxGain, 100);
+      noise(t, 0.1, 0.4, 1200, sfxGain);
+    },
+    ability() {
+      init();
+      const t = ctx.currentTime;
+      osc('sawtooth', 220, t,      0.08, 0.5, sfxGain, 440);
+      osc('square',   440, t+0.06, 0.12, 0.4, sfxGain, 880);
+      noise(t+0.1, 0.15, 0.3, 2000, sfxGain);
+    },
+    gameOver() {
+      init();
+      const t = ctx.currentTime;
+      [0, 0.18, 0.36, 0.54].forEach((d, i) => {
+        osc('sawtooth', 220 - i*30, t+d, 0.16, 0.4, sfxGain, 80 - i*10);
+      });
+    },
+    menuClick() {
+      init();
+      const t = ctx.currentTime;
+      osc('sine', 660, t, 0.06, 0.25, sfxGain, 880);
+    },
+    breach() {
+      init();
+      const t = ctx.currentTime;
+      osc('sawtooth', 100, t, 0.22, 0.6, sfxGain, 50);
+      noise(t, 0.2, 0.5, 200, sfxGain);
+    },
+  };
+
+  // ── BACKGROUND MUSIC (chiptune sea shanty loop) ──
+  // Built from oscillators: bass + melody + percussion, scheduled ahead in chunks
+  const TEMPO = 0.18; // seconds per 16th note
+  const SCALE = [196, 220, 247, 262, 294, 330, 370, 392]; // G minor pentatonic-ish
+
+  const MELODY = [4,4,6,4, 3,3,5,3, 4,6,4,3, 2,2,4,2,
+                  4,4,6,7, 5,5,4,3, 2,4,3,2, 1,1,-1,-1];
+  const BASS   = [0,0,0,0, 2,2,2,2, 0,0,0,0, 3,3,3,3,
+                  0,0,0,0, 2,2,2,2, 0,0,0,0, 4,4,4,4];
+
+  function scheduleMusic(fromTime) {
+    if (!musicRunning) return;
+    const stepDur = TEMPO;
+    const steps = MELODY.length;
+    const loopDur = steps * stepDur;
+    let t = fromTime;
+
+    // melody
+    MELODY.forEach((mi, i) => {
+      if (mi < 0) return;
+      const freq = SCALE[mi % SCALE.length] * (mi > 6 ? 2 : 1);
+      osc('square', freq, t + i*stepDur, stepDur * 0.7, 0.18, musicGain);
+    });
+
+    // bass (octave lower, half notes)
+    for (let i = 0; i < steps; i += 2) {
+      const mi = BASS[i];
+      const freq = (SCALE[mi % SCALE.length] / 2);
+      osc('triangle', freq, t + i*stepDur, stepDur * 1.6, 0.28, musicGain);
+    }
+
+    // hi-hat & kick percussion
+    for (let i = 0; i < steps; i++) {
+      // kick on beats 0, 4, 8, 12 (every 4 steps)
+      if (i % 4 === 0) noise(t + i*stepDur, stepDur*0.5, 0.22, 80, musicGain);
+      // hi-hat on every 2nd step
+      if (i % 2 === 0) noise(t + i*stepDur, stepDur*0.15, 0.10, 6000, musicGain);
+      // snare on beats 2, 6, 10, 14
+      if (i % 4 === 2) noise(t + i*stepDur, stepDur*0.3, 0.16, 1200, musicGain);
+    }
+
+    // schedule next loop
+    const nextTime = fromTime + loopDur;
+    musicScheduled = nextTime;
+    const scheduleAhead = loopDur * 1000 - 200;
+    setTimeout(() => { if (musicRunning) scheduleMusic(nextTime); }, scheduleAhead);
+  }
+
+  function startMusic() {
+    init();
+    if (musicRunning) return;
+    musicRunning = true;
+    scheduleMusic(ctx.currentTime + 0.1);
+  }
+
+  function stopMusic() {
+    musicRunning = false;
+  }
+
+  function toggleMute() {
+    init();
+    muted = !muted;
+    masterGain.gain.setTargetAtTime(muted ? 0 : 0.7, ctx.currentTime, 0.05);
+    return muted;
+  }
+
+  function isMuted() { return muted; }
+
+  return { SFX, startMusic, stopMusic, toggleMute, isMuted, init };
+})();
+
+function getLB(){try{return JSON.parse(localStorage.getItem('sds4_lb')||'[]');}catch(e){return[];}}
+function saveLB(a){try{localStorage.setItem('sds4_lb',JSON.stringify(a.slice(0,10)));}catch(e){}}
+function addScore(name,score,dist){
+  const lb=getLB();
+  lb.push({name:name.toUpperCase().slice(0,8),score,dist:Math.floor(dist),date:new Date().toLocaleDateString()});
+  lb.sort((a,b)=>b.score-a.score); saveLB(lb);
+}
+function showLB(){hide('overlay');show('lbScreen');renderLB();}
+function hideLB(){hide('lbScreen');goMainMenu();}
+function showHtp(){hide('overlay');show('htpScreen');}
+function hideHtp(){hide('htpScreen');show('overlay');}
+function show(id){document.getElementById(id).style.display='flex';}
+function hide(id){document.getElementById(id).style.display='none';}
+function renderLB(){
+  const lb=getLB(),el=document.getElementById('lbList');
+  if(!lb.length){el.innerHTML='<div style="color:#2a4a5a;font-size:9px;text-align:center;padding:24px;">No scores yet — set sail!</div>';return;}
+  const medals=['🥇','🥈','🥉'];
+  el.innerHTML=lb.map((e,i)=>`<div class="lb-row"><span class="lb-rank">${medals[i]||(i+1)}</span><span class="lb-name">${e.name}</span><span class="lb-score">${e.score.toLocaleString()}</span><span class="lb-dist">${e.dist}nm</span></div>`).join('');
+}
+
+// ── SHAKE ──
+let shakeAmt=0,shakeX=0,shakeY=0;
+function shake(a){shakeAmt=Math.max(shakeAmt,a);}
+
+// ── OCEAN ROWS ──
+const oceanRows=[];
+for(let r=0;r<H/8+2;r++) oceanRows.push({phase:Math.random()*6.28,speed:0.005+Math.random()*0.007,shade:Math.floor(Math.random()*4)});
+
+// ── INTERACTIVE OBJECTS ──
+let objects=[];
+const OBJ_TYPES=[
+  {type:'crate',          emoji:'📦',size:26,color:'#c08030'},
+  {type:'powerup_shield', emoji:'🛡', size:24,color:'#4080ff'},
+  {type:'powerup_rapid',  emoji:'⚡',size:24,color:'#ffe030'},
+  {type:'powerup_heal',   emoji:'❤️',size:24,color:'#ff4060'},
+];
+function spawnObject(y){
+  const r=Math.random();
+  const def=r<0.55?OBJ_TYPES[0]:r<0.70?OBJ_TYPES[1]:r<0.85?OBJ_TYPES[2]:OBJ_TYPES[3];
+  objects.push({...def,x:28+Math.random()*(W-56),y,hp:def.type==='crate'?2:0,wobble:Math.random()*6.28,collected:false});
+}
+function applyPowerup(type){
+  if(type==='powerup_shield'){G.shieldActive=true;G.shieldTimer=300;spawnFloat(G.ship.x,G.ship.y,'SHIELD!','#4080ff');}
+  else if(type==='powerup_rapid'){G.rapidTimer=600;spawnFloat(G.ship.x,G.ship.y,'RAPID FIRE!','#ffe030');}
+  else if(type==='powerup_heal'){G.health=Math.min(G.maxHealth,G.health+30);spawnFloat(G.ship.x,G.ship.y,'+30 HULL','#ff4060');}
+}
+
+// ── ENEMY DEFS ──
+const EDEFS={
+  crab:    {emoji:'🦀',hp:20, speed:0.55,fireMs:0,   atk:0, reward:8, killScore:50, size:28,color:'#e03020'},
+  jelly:   {emoji:'🪼',hp:20, speed:1.2, fireMs:0,   atk:0, reward:6, killScore:30, size:26,color:'#9060c0'},
+  blowfish:{emoji:'🐡',hp:40, speed:0.9, fireMs:2200,atk:12,reward:12,killScore:80, size:30,color:'#2090d0',burst:true},
+  shark:   {emoji:'🦈',hp:40, speed:1.5, fireMs:0,   atk:0, reward:14,killScore:120,size:34,color:'#3060a0',charger:true},
+  pirate:  {emoji:'🚢',hp:60, speed:0.45,fireMs:1800,atk:15,reward:22,killScore:200,size:36,color:'#806040'},
+  octopus: {emoji:'🐙',hp:80, speed:0.35,fireMs:1400,atk:14,reward:18,killScore:160,size:34,color:'#8040a0',multi:true},
+  eel:     {emoji:'🐍',hp:40, speed:0.95,fireMs:2000,atk:10,reward:16,killScore:140,size:28,color:'#208040',poison:true},
+  seahorse:{emoji:'🦑',hp:40, speed:0.75,fireMs:2800,atk:8, reward:10,killScore:90, size:28,color:'#2090b0',homing:true},
+  nautilus:{emoji:'🐚',hp:120,speed:0.32,fireMs:1200,atk:20,reward:30,killScore:300,size:40,color:'#9070a0',shield:true},
+  whale:   {emoji:'🐳',hp:200,speed:0.22,fireMs:1300,atk:25,reward:60,killScore:800,size:52,color:'#2060b0',boss:true},
+};
+
+// ── GAME STATE ──
+const G={
+  running:false,shopOpen:false,
+  score:0,dist:0,distRaw:0,gold:30,health:100,maxHealth:100,
+  ship:{x:W/2,y:H-110,sideSpeed:3.2},
+  scrollSpeed:2.0,scrollOff:0,
+  bullets:[],enemies:[],particles:[],floaties:[],explosions:[],
+  lastShot:0,shotMs:700,dmg:20,multishot:1,
+  abilityCharge:0,abilityMaxCharge:100,abilityLv:1,
+  shieldActive:false,shieldTimer:0,
+  poisoned:false,poisonTimer:0,
+  rapidTimer:0,effectiveShotMs:700,
+  spawnTimer:0,frame:0,keys:{},
+  upgrades:{
+    fireRate: {lv:1,costs:[25,40,65,100],  vals:[700,500,350,230,150],icon:'💥',name:'FIRE RATE', desc:'Shoot faster'},
+    damage:   {lv:1,costs:[35,55,80,120],  vals:[20,30,44,62,88],    icon:'⚡',name:'CANNON PWR',desc:'More damage'},
+    multishot:{lv:1,costs:[50,80,120],     vals:[1,2,3,4],           icon:'🎯',name:'MULTI-SHOT',desc:'Extra cannons'},
+    sideSpeed:{lv:1,costs:[20,35,55,80],   vals:[3.2,4.0,5.0,6.2,8],icon:'💨',name:'STEER SPD', desc:'Turn faster'},
+    special:  {lv:1,costs:[60,100,150],    vals:[0,1,2],             icon:'✨',name:'SPECIAL LV',desc:'Upgrade ability'},
+    repair:   {lv:0,costs:[20,30,45,70,100],vals:[20,25,35,50,65],   icon:'🔧',name:'REPAIR',    desc:'Restore hull',repeat:true},
+  }
+};
+
+function getDiff(){return 1+Math.min(G.dist/900,5.5);}
+
+// ── ABILITIES ──
+const ABILITY_NAMES=['BARRAGE','SHIELD','MAELSTROM'];
+function getAbilityName(){return ABILITY_NAMES[Math.min(G.abilityLv-1,2)];}
+function useAbility(){
+  if(!G.running||G.shopOpen||G.abilityCharge<G.abilityMaxCharge) return;
+  G.abilityCharge=0;
+  AU.SFX.ability();
+  const lv=Math.min(G.abilityLv,3);
+  if(lv===1){
+    for(let i=0;i<10;i++) G.bullets.push({x:G.ship.x+(-4.5+i)*8,y:G.ship.y-36,vx:0,vy:-11,dmg:G.dmg*1.6,own:'p',life:1,big:true});
+    shake(5);spawnPx(G.ship.x,G.ship.y,PAL.bulletP,22);
+  } else if(lv===2){
+    G.shieldActive=true;G.shieldTimer=260;
+    for(let i=0;i<24;i++){const a=i/24*6.28;G.particles.push({x:G.ship.x+Math.cos(a)*36,y:G.ship.y+Math.sin(a)*36,vx:Math.cos(a)*0.5,vy:Math.sin(a)*0.5,life:1,col:PAL.shieldAura,sz:3});}
+  } else {
+    G.enemies.forEach(e=>{e.stunned=180;spawnExplosion(e.x,e.y,'#60a0ff');});
+    shake(8);
+  }
+}
+
+// ── FX ──
+function spawnPx(x,y,col,n=8){for(let i=0;i<n;i++){const a=Math.random()*6.28,s=1+Math.random()*3.5;G.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,col,sz:1+Math.floor(Math.random()*2)});}}
+function spawnExplosion(x,y,col='#ff8020'){G.explosions.push({x,y,r:2,life:1,col});spawnPx(x,y,col,14);shake(3);}
+function spawnFloat(x,y,txt,col){G.floaties.push({x,y,vy:-0.75,life:1,txt,col});}
+
+// ── ENEMY SPAWN ──
+function pickEnemyType(){
+  const d=getDiff();
+  const pool=[
+    {t:'crab',m:0},{t:'jelly',m:0},{t:'blowfish',m:1.2},{t:'shark',m:1.8},
+    {t:'pirate',m:2.5},{t:'eel',m:3.0},{t:'octopus',m:3.5},
+    {t:'seahorse',m:4.0},{t:'nautilus',m:4.8},{t:'whale',m:5.5},
+  ].filter(p=>d>=p.m);
+  return pool[Math.min(pool.length-1,Math.floor(Math.random()*Math.random()*pool.length))].t;
+}
+function spawnEnemy(){
+  const type=pickEnemyType(),t=EDEFS[type],d=getDiff();
+  // sc starts at 0 so base HP is unchanged at dist=0, then scales up with distance.
+  // Early game (dist<100): all enemies at base HP — crabs/jellies die in 1 hit.
+  // By dist~900 (d≈2): enemies have ~1.5× HP. By dist~4500 (d≈6): ~3× HP.
+  const sc=Math.max(0,(d-1)*0.5);
+  let x,y;
+  const r=Math.random();
+  if(r<0.65){x=24+Math.random()*(W-48);y=-55;}
+  else if(r<0.82){x=-44;y=50+Math.random()*(H*0.55);}
+  else{x=W+44;y=50+Math.random()*(H*0.55);}
+  const hp=Math.max(t.hp, Math.floor(t.hp*(1+sc)));
+  G.enemies.push({
+    ...t,id:type,
+    hp, maxHp:hp,
+    reward:Math.floor(t.reward*(1+d*0.1)),
+    killScore:Math.floor(t.killScore*(1+d*0.15)),
+    x,y,lastFire:-9999,wobble:Math.random()*6.28,wobS:0.4+Math.random()*0.7,
+    stunned:0,shieldHp:t.shield?55:0,maxShieldHp:55,
+    chargeVx:0,chargeVy:0,chargeTarget:false,
+  });
+}
+
+// ── FIRE ──
+function firePlayer(){
+  const now=Date.now();
+  if(now-G.lastShot<G.effectiveShotMs) return;
+  G.lastShot=now;
+  AU.SFX.shoot();
+  for(let i=0;i<G.multishot;i++){
+    const ox=(i-(G.multishot-1)/2)*11;
+    G.bullets.push({x:G.ship.x+ox,y:G.ship.y-36,vx:0,vy:-11,dmg:G.dmg,own:'p',life:1});
+  }
+}
+function fireEnemy(e){
+  if(!e.fireMs||e.stunned>0) return;
+  const now=Date.now();
+  if(now-e.lastFire<e.fireMs) return;
+  e.lastFire=now;
+  const dx=G.ship.x-e.x,dy=G.ship.y-e.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+  if(e.multi){[-0.32,0,0.32].forEach(off=>{const a=Math.atan2(dy,dx)+off;G.bullets.push({x:e.x,y:e.y+8,vx:Math.cos(a)*3.6,vy:Math.sin(a)*3.6,dmg:e.atk*0.7,own:'e',life:1});});}
+  else if(e.homing){G.bullets.push({x:e.x,y:e.y+6,vx:dx/d*2.8,vy:dy/d*2.8,dmg:e.atk,own:'e',life:1,homing:true});}
+  else if(e.poison){G.bullets.push({x:e.x,y:e.y+6,vx:dx/d*3.2,vy:dy/d*3.2,dmg:e.atk,own:'e',life:1,poison:true});}
+  else if(e.burst){for(let i=0;i<6;i++){const a=i/6*6.28;G.bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*3.2,vy:Math.sin(a)*3.2,dmg:e.atk*0.55,own:'e',life:1});}}
+  else{G.bullets.push({x:e.x,y:e.y+8,vx:dx/d*3.6,vy:dy/d*3.6,dmg:e.atk,own:'e',life:1});}
+}
+
+// ── UPDATE ──
+function update(){
+  G.frame++;
+  if(shakeAmt>0){shakeX=(Math.random()-0.5)*shakeAmt*2;shakeY=(Math.random()-0.5)*shakeAmt*2;shakeAmt*=0.78;if(shakeAmt<0.25){shakeAmt=0;shakeX=0;shakeY=0;}}
+
+  const scroll=G.scrollSpeed;
+  G.distRaw+=scroll;
+  G.dist=G.distRaw/30;
+  G.score+=Math.ceil(scroll*0.5);
+  G.scrollSpeed=2.0+Math.min(G.dist/300,3.5);
+  G.scrollOff=(G.scrollOff||0)+scroll;
+
+  // timers
+  if(G.rapidTimer>0) G.rapidTimer--;
+  G.effectiveShotMs=G.rapidTimer>0?Math.floor(G.shotMs*0.3):G.shotMs;
+  if(G.shieldActive){G.shieldTimer--;if(G.shieldTimer<=0)G.shieldActive=false;}
+  if(G.poisoned){G.poisonTimer--;if(G.frame%60===0){G.health-=4;spawnFloat(G.ship.x,G.ship.y,'POISON -4','#80ff40');}if(G.poisonTimer<=0)G.poisoned=false;}
+
+  // objects
+  objects.forEach(o=>{
+    o.y+=scroll;o.wobble+=0.04;
+    if(o.collected||o.y>H+40) return;
+    if(o.type.startsWith('powerup_')){
+      const dx=G.ship.x-o.x,dy=G.ship.y-o.y;
+      if(dx*dx+dy*dy<30*30){o.collected=true;applyPowerup(o.type);AU.SFX.powerup();spawnPx(o.x,o.y,o.color,14);shake(2);}
+    }
+  });
+  G.bullets.forEach(b=>{
+    if(b.own!=='p') return;
+    objects.forEach(o=>{
+      if(o.type!=='crate'||o.collected) return;
+      const dx=b.x-o.x,dy=b.y-o.y;
+      if(dx*dx+dy*dy<o.size*o.size){
+        b.life=0;o.hp--;
+        spawnPx(o.x,o.y,'#c08030',6);
+        if(o.hp<=0){
+          o.collected=true;
+          const g=5+Math.floor(Math.random()*8);
+          G.gold+=g;AU.SFX.crateBreak();spawnFloat(o.x,o.y,'+'+g+' GOLD',PAL.gold);spawnExplosion(o.x,o.y,'#c08030');
+        }
+      }
+    });
+  });
+  objects=objects.filter(o=>!o.collected&&o.y<H+50);
+  if(G.frame%100===0) spawnObject(-30);
+
+  // spawn
+  G.spawnTimer++;
+  const sf=Math.max(38,90-getDiff()*8);
+  if(G.spawnTimer>=sf){spawnEnemy();G.spawnTimer=0;}
+
+  // steer
+  if(G.keys['ArrowLeft'])  G.ship.x-=G.ship.sideSpeed;
+  if(G.keys['ArrowRight']) G.ship.x+=G.ship.sideSpeed;
+  G.ship.x=Math.max(22,Math.min(W-22,G.ship.x));
+
+  firePlayer();
+
+  // enemies move
+  G.enemies.forEach(e=>{
+    if(e.stunned>0){e.stunned--;e.y+=scroll*0.55;return;}
+    e.wobble+=e.wobS*0.03;
+    e.y+=scroll*0.55;
+    if(e.charger){
+      if(!e.chargeTarget&&e.y>0&&e.y<H*0.85){
+        e.chargeTarget=true;
+        const dx=G.ship.x-e.x,dy=G.ship.y-e.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+        e.chargeVx=dx/d*4;e.chargeVy=dy/d*4;
+        spawnFloat(e.x,e.y,'CHARGE!','#ff4020');
+      }
+      if(e.chargeTarget){e.x+=e.chargeVx;e.y+=e.chargeVy;}
+      else{e.x+=Math.sin(e.wobble)*0.8;e.y+=e.speed*0.4;}
+    } else {
+      e.x+=Math.sin(e.wobble)*0.9;
+      e.y+=e.speed*0.4;
+    }
+    fireEnemy(e);
+    if(e.y>H+55){
+      e.dead=true;
+      if(!G.shieldActive){G.health-=14;spawnPx(G.ship.x,G.ship.y,'#ff3020',7);shake(4);AU.SFX.breach();spawnFloat(G.ship.x,G.ship.y,'-14 BREACH!','#ff4020');}
+    }
+  });
+
+  // bullets
+  G.bullets.forEach(b=>{
+    if(b.homing){const dx=G.ship.x-b.x,dy=G.ship.y-b.y,d=Math.sqrt(dx*dx+dy*dy)||1;b.vx+=dx/d*0.2;b.vy+=dy/d*0.2;const sp=Math.sqrt(b.vx*b.vx+b.vy*b.vy);if(sp>4.8){b.vx=b.vx/sp*4.8;b.vy=b.vy/sp*4.8;}}
+    if(b.own==='p') b.y+=scroll*0.25;
+    b.x+=b.vx;b.y+=b.vy;
+    if(b.x<-10||b.x>W+10||b.y<-20||b.y>H+20){b.life=0;return;}
+    if(b.own==='p'){
+      G.enemies.forEach(e=>{
+        if(e.dead) return;
+        const dx=b.x-e.x,dy=b.y-e.y;
+        if(dx*dx+dy*dy<e.size*e.size){
+          b.life=0;
+          if(e.shieldHp>0){e.shieldHp-=b.dmg;spawnPx(e.x,e.y,'#4080ff',5);AU.SFX.hit();if(e.shieldHp<=0)spawnFloat(e.x,e.y,'SHIELD BROKEN!','#4080ff');return;}
+          e.hp-=b.dmg;spawnPx(b.x,b.y,'#fff',3);AU.SFX.hit();
+          if(e.hp<=0)killEnemy(e);
+        }
+      });
+    } else {
+      const dx=b.x-G.ship.x,dy=b.y-G.ship.y;
+      if(dx*dx+dy*dy<28*28){
+        b.life=0;
+        if(G.shieldActive){spawnPx(G.ship.x,G.ship.y,'#4080ff',7);AU.SFX.hit();}
+        else{G.health-=b.dmg;shake(b.dmg>14?4:2);AU.SFX.playerHit();spawnFloat(G.ship.x,G.ship.y,'-'+b.dmg,'#ff6040');spawnPx(G.ship.x,G.ship.y,'#ff4020',5);if(b.poison&&!G.poisoned){G.poisoned=true;G.poisonTimer=360;spawnFloat(G.ship.x,G.ship.y,'POISONED!','#80ff40');}}
+      }
+    }
+  });
+
+  G.explosions.forEach(ex=>{ex.r+=1.6;ex.life-=0.055;});
+  G.particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy+scroll*0.12;p.vy+=0.05;p.life-=0.027;});
+  G.floaties.forEach(f=>{f.y+=f.vy+scroll*0.08;f.life-=0.02;});
+
+  G.bullets=G.bullets.filter(b=>b.life>0);
+  G.enemies=G.enemies.filter(e=>!e.dead);
+  G.explosions=G.explosions.filter(e=>e.life>0);
+  G.particles=G.particles.filter(p=>p.life>0);
+  G.floaties=G.floaties.filter(f=>f.life>0);
+
+  G.health=Math.max(0,G.health);
+  updateHUD();
+  if(G.health<=0) doGameOver();
+}
+
+function killEnemy(e){
+  e.dead=true;
+  G.score+=e.killScore;G.gold+=e.reward;
+  G.abilityCharge=Math.min(G.abilityMaxCharge,G.abilityCharge+(e.boss?35:9));
+  spawnExplosion(e.x,e.y,e.color);
+  spawnFloat(e.x,e.y,'+'+e.killScore,PAL.gold);
+  if(e.boss){ AU.SFX.bossDie(); shake(12);for(let i=0;i<4;i++)setTimeout(()=>spawnExplosion(e.x+(-25+Math.random()*50),e.y+(-20+Math.random()*40)),i*130); }
+  else { AU.SFX.enemyDie(); }
+}
+
+// ── DRAW ──
+function draw(){
+  ctx.save();
+  if(shakeAmt>0) ctx.translate(shakeX,shakeY);
+
+  // ocean
+  const off=G.scrollOff%8;
+  for(let r=-1;r<H/8+1;r++){
+    const ri=((r+Math.floor(G.scrollOff/8))%oceanRows.length+oceanRows.length)%oceanRows.length;
+    const row=oceanRows[ri];
+    row.phase+=row.speed;
+    ctx.fillStyle=PAL.sea[row.shade];
+    ctx.fillRect(0,r*8+off,W,8);
+    if(ri%3===0){for(let fx=0;fx<W;fx+=15){const fy=r*8+off+2+Math.round(Math.sin(row.phase+fx*0.11)*2);ctx.fillStyle=PAL.foamD;ctx.fillRect(fx,fy,2,1);ctx.fillStyle=PAL.foam;ctx.fillRect(fx+1,fy,1,1);}}
+  }
+
+  // stars
+  for(let i=0;i<8;i++){const sx=(i*87+G.frame*0.06)%W,sy=(i*29+5)%50;ctx.fillStyle=G.frame%120<60?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.2)';ctx.fillRect(Math.floor(sx),Math.floor(sy),1,1);}
+
+  // objects
+  objects.forEach(o=>{
+    if(o.collected) return;
+    ctx.save();ctx.translate(o.x,o.y);
+    if(o.type.startsWith('powerup_')){
+      const bob=Math.sin(G.frame*0.1+o.wobble)*4;
+      ctx.translate(0,bob);
+      ctx.font=o.size+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(o.emoji,0,0);
+      ctx.strokeStyle=o.color+'99';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,20+Math.sin(G.frame*0.15)*3,0,6.28);ctx.stroke();
+    } else {
+      if(o.hp===1&&G.frame%8<4) ctx.globalAlpha=0.5;
+      ctx.font=o.size+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(o.emoji,0,0);ctx.globalAlpha=1;
+      for(let i=0;i<2;i++){ctx.fillStyle=i<o.hp?'#c08030':'#2a2a2a';ctx.fillRect(-7+i*9,-o.size/2-9,7,5);}
+    }
+    ctx.restore();
+  });
+
+  // explosions
+  G.explosions.forEach(ex=>{ctx.globalAlpha=ex.life*0.5;ctx.strokeStyle=ex.col;ctx.lineWidth=2;ctx.beginPath();ctx.arc(ex.x,ex.y,ex.r,0,6.28);ctx.stroke();ctx.globalAlpha=ex.life*0.22;ctx.fillStyle=ex.col;ctx.beginPath();ctx.arc(ex.x,ex.y,ex.r*0.55,0,6.28);ctx.fill();ctx.globalAlpha=1;});
+
+  // shield / poison aura
+  if(G.shieldActive){const p=36+Math.sin(G.frame*0.25)*5;ctx.strokeStyle='rgba(64,128,255,0.8)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(G.ship.x,G.ship.y,p,0,6.28);ctx.stroke();ctx.strokeStyle='rgba(64,128,255,0.22)';ctx.lineWidth=8;ctx.beginPath();ctx.arc(G.ship.x,G.ship.y,p+7,0,6.28);ctx.stroke();}
+  if(G.poisoned&&G.frame%8<4){ctx.strokeStyle='rgba(80,255,60,0.55)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(G.ship.x,G.ship.y,32,0,6.28);ctx.stroke();}
+
+  // enemies
+  G.enemies.forEach(e=>{
+    if(e.stunned>0&&G.frame%6<3) ctx.globalAlpha=0.4;
+    if(e.shieldHp>0){ctx.strokeStyle='rgba(64,128,255,0.85)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,e.size+5,0,6.28);ctx.stroke();}
+    ctx.font=e.size+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(e.emoji,e.x,e.y);ctx.globalAlpha=1;
+    const bw=e.size*1.7;
+    ctx.fillStyle='#0a0a0a';ctx.fillRect(e.x-bw/2,e.y-e.size-7,bw,4);
+    const hp=e.hp/e.maxHp;ctx.fillStyle=hp>0.5?PAL.hp:hp>0.25?'#e0a020':PAL.hpLow;
+    ctx.fillRect(e.x-bw/2,e.y-e.size-7,bw*hp,4);
+    if(e.shieldHp>0){ctx.fillStyle='#0a1a3a';ctx.fillRect(e.x-bw/2,e.y-e.size-12,bw,3);ctx.fillStyle='#4080ff';ctx.fillRect(e.x-bw/2,e.y-e.size-12,bw*(e.shieldHp/e.maxShieldHp),3);}
+  });
+
+  // bullets
+  G.bullets.forEach(b=>{
+    if(b.own==='p'){ctx.fillStyle=b.big?'#fff':PAL.bulletP;ctx.fillRect(Math.floor(b.x-2),Math.floor(b.y-5),5,b.big?10:8);ctx.fillStyle='rgba(255,255,255,0.8)';ctx.fillRect(Math.floor(b.x-1),Math.floor(b.y-4),3,3);}
+    else if(b.poison){ctx.fillStyle=PAL.bulletPoison;ctx.fillRect(Math.floor(b.x-2),Math.floor(b.y-2),5,5);ctx.fillStyle='#c0ff90';ctx.fillRect(Math.floor(b.x-1),Math.floor(b.y-1),3,3);}
+    else{ctx.fillStyle=PAL.bulletE;ctx.fillRect(Math.floor(b.x-2),Math.floor(b.y-2),5,5);ctx.fillStyle=PAL.bulletE2;ctx.fillRect(Math.floor(b.x-1),Math.floor(b.y-1),3,3);}
+  });
+
+  // particles
+  G.particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillStyle=p.col;ctx.fillRect(Math.floor(p.x),Math.floor(p.y),p.sz,p.sz);ctx.globalAlpha=1;});
+
+  // floaties — use Silkscreen
+  ctx.textBaseline='alphabetic';
+  G.floaties.forEach(f=>{
+    ctx.globalAlpha=f.life;ctx.fillStyle=f.col;
+    ctx.font='bold 9px '+FONT;ctx.textAlign='center';
+    ctx.fillText(f.txt,f.x,f.y);ctx.globalAlpha=1;
+  });
+
+  // ship
+  drawPixelShip(G.ship.x,G.ship.y);
+
+  // wake
+  for(let i=1;i<=6;i++){const wy=G.ship.y+26+i*6;ctx.fillStyle='rgba(176,216,232,'+(0.5-i*0.07)+')';ctx.fillRect(Math.floor(G.ship.x-6-i*1.5),Math.floor(wy),3,3);ctx.fillRect(Math.floor(G.ship.x+4+i*1.5),Math.floor(wy),3,3);}
+
+  // ability bar at bottom
+  const bx=4,by=H-14,bw2=W-8,bh=8;
+  ctx.fillStyle='rgba(5,10,18,0.85)';ctx.fillRect(bx,by,bw2,bh);
+  const cp=G.abilityCharge/G.abilityMaxCharge;
+  const barCol=cp>=1?'#60ffff':'#1a5080';
+  ctx.fillStyle=barCol;ctx.fillRect(bx,by,Math.floor(bw2*cp),bh);
+  if(cp>=1){ctx.fillStyle='rgba(60,255,255,'+(0.18+Math.sin(G.frame*0.28)*0.18)+')';ctx.fillRect(bx,by,bw2,bh);}
+  ctx.strokeStyle=cp>=1?'#60ffff':'#1a3a5a';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw2,bh);
+  ctx.fillStyle=cp>=1?'#fff':'#1a5070';
+  ctx.font='6px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(cp>=1?getAbilityName()+' READY! [UP/E]':getAbilityName()+' '+Math.floor(cp*100)+'%',bx+bw2/2,by+bh/2+1);
+
+  // rapid fire badge
+  if(G.rapidTimer>0){
+    ctx.fillStyle='rgba(255,220,0,0.85)';
+    ctx.font='7px '+FONT;ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillText('RAPID '+Math.ceil(G.rapidTimer/60)+'s',8,H-18);
+  }
+
+  // G hint
+  ctx.fillStyle='rgba(40,80,100,0.7)';ctx.font='6px '+FONT;ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillText('[G] SHOP',W-5,H-18);
+
+  ctx.restore();
+}
+
+function drawPixelShip(x,y){
+  const p=(rx,ry,w,h,col)=>{ctx.fillStyle=col;ctx.fillRect(Math.floor(x+rx),Math.floor(y+ry),w,h);};
+  p(-26,8,52,18,PAL.hull);
+  p(-22,4,44,6,PAL.deck);
+  p(-20,22,40,7,PAL.dark);
+  p(-30,10,5,12,PAL.hull);p(25,10,5,12,PAL.hull);
+  p(-28,14,3,6,PAL.dark);p(25,14,3,6,PAL.dark);
+  p(-2,-36,4,44,PAL.mast);
+  ctx.fillStyle=G.poisoned?'#80ff60':PAL.sailW;
+  ctx.fillRect(Math.floor(x),Math.floor(y-34),20,24);
+  ctx.fillRect(Math.floor(x+1),Math.floor(y-30),14,16);
+  p(18,-32,4,20,PAL.sailS);
+  p(-24,10,10,7,'#404040');p(14,10,10,7,'#404040');
+  p(-26,12,5,4,'#606060');p(22,12,5,4,'#606060');
+  ctx.fillStyle=G.shieldActive?'#60ffff':'#cc2020';
+  ctx.fillRect(Math.floor(x),Math.floor(y-40),14,7);
+  ctx.fillRect(Math.floor(x+1),Math.floor(y-37),8,4);
+}
+
+function updateHUD(){
+  document.getElementById('hvDist').textContent=Math.floor(G.dist)+' nm';
+  document.getElementById('hvScore').textContent=G.score.toLocaleString();
+  document.getElementById('hvGold').textContent=G.gold;
+  document.getElementById('hvSpeed').textContent=G.scrollSpeed.toFixed(1)+'x';
+  document.getElementById('healthFill').style.width=(G.health/G.maxHealth*100)+'%';
+  document.getElementById('healthFill').style.background=G.health<30?'linear-gradient(90deg,#cc2020,#ff4040)':'linear-gradient(90deg,#2ecc40,#a0ff40)';
+  document.getElementById('abilityFill').style.width=(G.abilityCharge/G.abilityMaxCharge*100)+'%';
+  document.getElementById('abilityLbl').textContent=getAbilityName();
+}
+
+function toggleMuteBtn(){
+  AU.init();
+  const muted = AU.toggleMute();
+  document.getElementById('muteIcon').textContent = muted ? '🔇' : '🔊';
+}
+
+// ── INPUT ──
+document.addEventListener('keydown',e=>{
+  G.keys[e.key]=true;
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+  if(e.key==='ArrowUp'||e.key==='e'||e.key==='E') useAbility();
+  if((e.key==='g'||e.key==='G')&&(G.running||G.shopOpen)) toggleShop();
+  if(e.key==='m'||e.key==='M') toggleMuteBtn();
+});
+document.addEventListener('keyup',e=>{G.keys[e.key]=false;});
+
+// ── SHOP ──
+function toggleShop(){if(G.shopOpen)closeShop();else openShop();}
+function openShop(){
+  G.shopOpen=true;G.running=false;
+  document.getElementById('shopSubTxt').textContent='DIST: '+Math.floor(G.dist)+'nm  |  '+G.score.toLocaleString()+' pts';
+  document.getElementById('shopGoldVal').textContent=G.gold;
+  renderShop();show('shopScreen');
+}
+function closeShop(){
+  G.shopOpen=false;G.running=true;
+  hide('shopScreen');requestAnimationFrame(loop);
+}
+function renderShop(){
+  document.getElementById('shopGoldVal').textContent=G.gold;
+  const grid=document.getElementById('shopGrid');grid.innerHTML='';
+  Object.keys(G.upgrades).forEach(k=>{
+    const u=G.upgrades[k],li=u.lv-1;
+    if(!u.repeat&&li>=u.costs.length) return;
+    const ci=u.repeat?Math.min(u.lv,u.costs.length-1):li;
+    const cost=u.costs[ci];
+    const locked=G.gold<cost;
+    const d=document.createElement('div');
+    d.className='shop-card'+(locked?' locked':'');
+    const nextV=u.vals[u.lv];
+    d.innerHTML=`<div class="sc-icon">${u.icon}</div><span class="sc-name">${u.name}</span><span class="sc-desc">${u.desc}${nextV?' → '+nextV+(k==='fireRate'?'ms':''):''}</span><span class="sc-cost">💰 ${cost}</span>`;
+    d.onclick=()=>{
+      if(G.gold<cost) return;
+      G.gold-=cost;
+      if(k==='repair'){G.health=Math.min(G.maxHealth,G.health+(u.vals[u.lv]||u.vals[u.vals.length-1]));}
+      else{u.lv++;applyUpgrade(k);}
+      renderShop();
+    };
+    grid.appendChild(d);
+  });
+}
+function applyUpgrade(k){
+  const u=G.upgrades;
+  if(k==='fireRate')  G.shotMs=u.fireRate.vals[u.fireRate.lv-1];
+  if(k==='damage')    G.dmg=u.damage.vals[u.damage.lv-1];
+  if(k==='multishot') G.multishot=u.multishot.vals[u.multishot.lv-1];
+  if(k==='sideSpeed') G.ship.sideSpeed=u.sideSpeed.vals[u.sideSpeed.lv-1];
+  if(k==='special')   G.abilityLv=u.special.lv;
+}
+
+// ── GAME OVER ──
+function doGameOver(){
+  G.running=false;
+  AU.SFX.gameOver();
+  AU.stopMusic();
+  const ov=document.getElementById('overlay');
+  ov.style.display='flex';
+  ov.innerHTML=`
+    <div style="font-size:36px;margin-bottom:6px;">💀</div>
+    <div class="px-title" style="color:#cc2020;font-size:20px;animation:none;">SHIP SUNK</div>
+    <div class="px-sub">Game Over</div>
+    <div style="font-size:9px;color:#4a8fa0;margin:6px 0;line-height:2.2;">
+      DIST <span style="color:#e0c060;">${Math.floor(G.dist)} nm</span>
+      &nbsp;·&nbsp;
+      SCORE <span style="color:#e0c060;">${G.score.toLocaleString()}</span>
+    </div>
+    <div style="font-size:7px;color:#446;margin-top:10px;letter-spacing:2px;">ENTER YOUR NAME</div>
+    <input id="nameInput" maxlength="8" value="CAPTAIN"
+      style="background:#060e18;color:#e0c060;border:2px solid #1a4a6a;font-family:'Silkscreen',cursive;font-size:12px;padding:7px 12px;text-align:center;letter-spacing:2px;margin-top:6px;width:180px;"/>
+    <button class="px-btn" onclick="submitScore()" style="font-size:10px;">⚓ SUBMIT</button>
+    <button class="px-btn-sm" onclick="resetAll()">▶ RETRY</button>
+    <button class="px-btn-sm" onclick="showLB()">🏆 LEADERBOARD</button>
+    <button class="px-btn-sm" onclick="goMainMenu()">⚓ MAIN MENU</button>
+  `;
+}
+function submitScore(){
+  const name=document.getElementById('nameInput').value||'CAPTAIN';
+  addScore(name,G.score,G.dist);showLB();
+}
+function goMainMenu(){
+  const ov=document.getElementById('overlay');
+  ov.style.display='flex';
+  ov.innerHTML=`
+    <div style="font-size:42px;margin-bottom:8px;animation:float 3s ease-in-out infinite;">⚓</div>
+    <div class="px-title">SEA DRIFT</div>
+    <div class="px-sub">Captain's Edition</div>
+    <button class="px-btn" onclick="startGame()">▶ SET SAIL</button>
+    <button class="px-btn-sm" onclick="showHtp()">📖 HOW TO PLAY</button>
+    <button class="px-btn-sm" onclick="showLB()">🏆 LEADERBOARD</button>
+  `;
+}
+
+// ── TUTORIAL ──
+const TUT_STEPS = [
+  {
+    icon:'🚢',
+    title:'YOUR SHIP',
+    body:`Your ship sails forward automatically.\nThe ocean flows beneath you — the farther you sail, the higher your <b>score</b>.\nYou cannot stop. You can only steer.`,
+    highlight:'ship',
+  },
+  {
+    icon:'⬅️➡️',
+    title:'STEERING',
+    body:`Press <span class="key">←</span> and <span class="key">→</span> to steer left and right.\nDodge enemy fire and avoid being overwhelmed.\nTry it now — the game is running!`,
+    highlight:'none',
+  },
+  {
+    icon:'💥',
+    title:'CANNONS',
+    body:`Your cannons fire <b>automatically</b> — no button needed.\nAim by steering your ship toward enemies.\nKilling enemies earns <b>bonus score</b> and <b>gold</b>.`,
+    highlight:'bullet',
+  },
+  {
+    icon:'⚡',
+    title:'SPECIAL ABILITY',
+    body:`Your <b>Special</b> bar charges as you kill enemies.\nWhen full, press <span class="key">↑</span> or <span class="key">E</span> to unleash it.\nStart with BARRAGE — 10 cannonballs at once!`,
+    highlight:'ability',
+  },
+  {
+    icon:'📦',
+    title:'OBJECTS & SHOP',
+    body:`Shoot <b>📦 crates</b> for gold.\nSail through <b>⚡ ❤️ 🛡 power-ups</b> for instant buffs.\nPress <span class="key">G</span> anytime to open the <b>upgrade shop</b>.`,
+    highlight:'none',
+  },
+];
+
+let tutStep = 0;
+let tutActive = false;
+
+function isFirstTime(){ try{ return !localStorage.getItem('sds_tutdone'); }catch(e){ return true; } }
+function markTutDone(){ try{ localStorage.setItem('sds_tutdone','1'); }catch(e){} }
+
+function startTutorial(){
+  tutStep = 0;
+  tutActive = true;
+  G.running = false; // hold the game until tutorial is done
+  document.getElementById('tutorialScreen').style.display = 'flex';
+  renderTutStep();
+}
+
+function renderTutStep(){
+  const s = TUT_STEPS[tutStep];
+  const dots = TUT_STEPS.map((_,i) =>
+    `<div class="tut-dot${i===tutStep?' active':''}"></div>`
+  ).join('');
+  const isLast = tutStep === TUT_STEPS.length - 1;
+  const bodyHtml = s.body.replace(/\n/g,'<br>');
+  document.getElementById('tutCard').innerHTML = `
+    <span class="tut-step">Step ${tutStep+1} of ${TUT_STEPS.length}</span>
+    <span class="tut-icon">${s.icon}</span>
+    <span class="tut-title">${s.title}</span>
+    <div class="tut-body">${bodyHtml}</div>
+    <div class="tut-actions">
+      <button class="px-btn-sm" style="margin:0;font-size:8px;" onclick="skipTutorial()">SKIP</button>
+      <div class="tut-dots">${dots}</div>
+      <button class="px-btn" style="margin:0;padding:7px 16px;font-size:9px;" onclick="advanceTutorial()">
+        ${isLast ? '⚓ SAIL!' : 'NEXT →'}
+      </button>
+    </div>
+  `;
+  // re-trigger slide-in animation via clone
+  const card = document.getElementById('tutCard');
+  const clone = card.cloneNode(true);
+  clone.id = 'tutCard';
+  card.parentNode.replaceChild(clone, card);
+  clone.querySelector('[onclick="skipTutorial()"]').onclick = skipTutorial;
+  clone.querySelector('[onclick="advanceTutorial()"]').onclick = advanceTutorial;
+}
+
+function advanceTutorial(){
+  tutStep++;
+  if(tutStep >= TUT_STEPS.length) endTutorial();
+  else renderTutStep();
+}
+
+function skipTutorial(){ endTutorial(); }
+
+function endTutorial(){
+  tutActive = false;
+  markTutDone();
+  document.getElementById('tutorialScreen').style.display = 'none';
+  // now actually start the game loop
+  G.running = true;
+  AU.startMusic();
+  requestAnimationFrame(loop);
+}
+
+// ── START / RESET ──
+function startGame(){
+  hide('overlay');hide('shopScreen');
+  G.running = false; // will be set true by endTutorial or directly below
+  G.shopOpen=false;
+  G.score=0;G.dist=0;G.distRaw=0;G.gold=30;G.health=100;G.abilityCharge=0;
+  G.poisoned=false;G.shieldActive=false;G.scrollSpeed=2.0;G.scrollOff=0;
+  G.rapidTimer=0;G.effectiveShotMs=700;
+  G.ship.x=W/2;G.ship.y=H-110;G.ship.sideSpeed=3.2;G.keys={};
+  G.bullets=[];G.enemies=[];G.particles=[];G.floaties=[];G.explosions=[];
+  objects=[];G.spawnTimer=0;G.frame=0;
+  Object.values(G.upgrades).forEach(u=>u.lv=1);
+  G.shotMs=700;G.dmg=20;G.multishot=1;G.abilityLv=1;
+  updateHUD();
+  if(isFirstTime()){
+    startTutorial(); // game starts only when tutorial ends/skipped
+  } else {
+    G.running = true;
+    AU.stopMusic();
+    AU.startMusic();
+    requestAnimationFrame(loop);
+  }
+}
+function resetAll(){startGame();}
+function loop(){if(!G.running)return;update();draw();requestAnimationFrame(loop);}
+</script>
+</body>
+</html>
