@@ -1006,9 +1006,9 @@ function doGameOver(){
     <button class="px-btn-sm" onclick="goMainMenu()">⚓ MAIN MENU</button>
   `;
 }
-function submitScore(){
+async function submitScore(){
   const name=document.getElementById('nameInput').value||'CAPTAIN';
-  addScore(name,G.score,G.dist);showLB();
+  await addScore(name,G.score,G.dist);showLB();
 }
 function goMainMenu(){
   const ov=document.getElementById('overlay');
