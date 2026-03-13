@@ -456,24 +456,47 @@ const AU = (() => {
   return { SFX, startMusic, stopMusic, toggleMute, isMuted, init };
 })();
 
-function getLB(){try{return JSON.parse(localStorage.getItem('sds4_lb')||'[]');}catch(e){return[];}}
-function saveLB(a){try{localStorage.setItem('sds4_lb',JSON.stringify(a.slice(0,10)));}catch(e){}}
-function addScore(name,score,dist){
-  const lb=getLB();
-  lb.push({name:name.toUpperCase().slice(0,8),score,dist:Math.floor(dist),date:new Date().toLocaleDateString()});
-  lb.sort((a,b)=>b.score-a.score); saveLB(lb);
+// ── SUPABASE CONFIG ──
+const SUPABASE_URL = 'https://cshakgclxcnbugcusixz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzaGFrZ2NseGNuYnVnY3VzaXh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NDM1MTEsImV4cCI6MjA4OTAxOTUxMX0.ycaL9zCm0uMNDOMi5iIapYZZueOTSX1bm3Iw59pviRM';
+
+async function fetchLB(){
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/leaderboard?select=player_name,score,distance&order=score.desc&limit=10`, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    return await res.json();
+  } catch(e) { console.error('LB fetch error', e); return []; }
 }
+
+async function addScore(name, score, dist){
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/leaderboard`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ player_name: name.toUpperCase().slice(0,8), score, distance: Math.floor(dist) })
+    });
+  } catch(e) { console.error('Score submit error', e); }
+}
+
 function showLB(){hide('overlay');show('lbScreen');renderLB();}
 function hideLB(){hide('lbScreen');goMainMenu();}
 function showHtp(){hide('overlay');show('htpScreen');}
 function hideHtp(){hide('htpScreen');show('overlay');}
 function show(id){document.getElementById(id).style.display='flex';}
 function hide(id){document.getElementById(id).style.display='none';}
-function renderLB(){
-  const lb=getLB(),el=document.getElementById('lbList');
+async function renderLB(){
+  const el=document.getElementById('lbList');
+  el.innerHTML='<div style="color:#4a8fa0;font-size:9px;text-align:center;padding:24px;">Loading...</div>';
+  const lb = await fetchLB();
   if(!lb.length){el.innerHTML='<div style="color:#2a4a5a;font-size:9px;text-align:center;padding:24px;">No scores yet — set sail!</div>';return;}
   const medals=['🥇','🥈','🥉'];
-  el.innerHTML=lb.map((e,i)=>`<div class="lb-row"><span class="lb-rank">${medals[i]||(i+1)}</span><span class="lb-name">${e.name}</span><span class="lb-score">${e.score.toLocaleString()}</span><span class="lb-dist">${e.dist}nm</span></div>`).join('');
+  el.innerHTML=lb.map((e,i)=>`<div class="lb-row"><span class="lb-rank">${medals[i]||(i+1)}</span><span class="lb-name">${e.player_name}</span><span class="lb-score">${e.score.toLocaleString()}</span><span class="lb-dist">${e.distance}nm</span></div>`).join('');
 }
 
 // ── SHAKE ──
