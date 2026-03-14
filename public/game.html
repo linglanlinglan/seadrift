@@ -586,7 +586,9 @@ const G={
   }
 };
 
-function getDiff(){return 1+Math.min(G.dist/900,5.5);}
+function getDiff(){return 1+Math.min(G.dist/450,8);}
+function getSpeedMult(){return 1+Math.min(getDiff()*0.12,1.5);} // enemies move faster over time
+function getAtkMult(){return 1+Math.min((getDiff()-1)*0.15,2);} // enemies hit harder over time
 
 // ── ABILITIES ──
 const ABILITY_NAMES=['BARRAGE','SHIELD','MAELSTROM'];
