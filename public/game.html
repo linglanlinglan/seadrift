@@ -750,11 +750,11 @@ function update(){
         e.chargeVx=dx/d*4;e.chargeVy=dy/d*4;
         spawnFloat(e.x,e.y,'CHARGE!','#ff4020');
       }
-      if(e.chargeTarget){e.x+=e.chargeVx;e.y+=e.chargeVy;}
-      else{e.x+=Math.sin(e.wobble)*0.8;e.y+=e.speed*0.4;}
+    if(e.chargeTarget){e.x+=e.chargeVx*getSpeedMult();e.y+=e.chargeVy*getSpeedMult();}
+      else{e.x+=Math.sin(e.wobble)*0.8;e.y+=e.speed*0.4*getSpeedMult();}
     } else {
       e.x+=Math.sin(e.wobble)*0.9;
-      e.y+=e.speed*0.4;
+      e.y+=e.speed*0.4*getSpeedMult();
     }
     fireEnemy(e);
     if(e.y>H+55){
