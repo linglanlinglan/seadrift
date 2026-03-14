@@ -784,7 +784,7 @@ function update(){
       if(dx*dx+dy*dy<28*28){
         b.life=0;
         if(G.shieldActive){spawnPx(G.ship.x,G.ship.y,'#4080ff',7);AU.SFX.hit();}
-        else{G.health-=b.dmg;shake(b.dmg>14?4:2);AU.SFX.playerHit();spawnFloat(G.ship.x,G.ship.y,'-'+b.dmg,'#ff6040');spawnPx(G.ship.x,G.ship.y,'#ff4020',5);if(b.poison&&!G.poisoned){G.poisoned=true;G.poisonTimer=360;spawnFloat(G.ship.x,G.ship.y,'POISONED!','#80ff40');}}
+        else{const atkDmg=Math.ceil(b.dmg*getAtkMult());G.health-=atkDmg;shake(atkDmg>14?4:2);AU.SFX.playerHit();spawnFloat(G.ship.x,G.ship.y,'-'+b.dmg,'#ff6040');spawnPx(G.ship.x,G.ship.y,'#ff4020',5);if(b.poison&&!G.poisoned){G.poisoned=true;G.poisonTimer=360;spawnFloat(G.ship.x,G.ship.y,'POISONED!','#80ff40');}}
       }
     }
   });
