@@ -755,7 +755,6 @@ function update(){
     fireEnemy(e);
     if(e.y>H+55){
       e.dead=true;
-      if(!G.shieldActive){G.health-=14;spawnPx(G.ship.x,G.ship.y,'#ff3020',7);shake(4);AU.SFX.breach();spawnFloat(G.ship.x,G.ship.y,'-14 BREACH!','#ff4020');}
     }
   });
 
