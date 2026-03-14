@@ -12,23 +12,11 @@ html, body { width:100%; height:100%; background:#040c14; display:flex; align-it
 #wrap { position:relative; display:inline-block; border:4px solid #1a3a4a; box-shadow:0 0 40px rgba(0,150,200,0.15), 0 0 80px rgba(0,0,0,0.8); }
 canvas { display:block; image-rendering:pixelated; background:#091e30; }
 
-/* ── TOUCH CONTROLS ── */
-#touchControls { display:none; position:absolute; bottom:0; left:0; right:0; z-index:15; pointer-events:none; }
-.touch-btn {
-  pointer-events:all; position:absolute; display:flex; align-items:center; justify-content:center;
-  background:rgba(224,192,96,0.15); border:2px solid rgba(224,192,96,0.35); border-radius:50%;
-  color:#e0c060; font-size:18px; text-shadow:1px 1px 0 #000;
-  width:56px; height:56px; -webkit-tap-highlight-color:transparent;
-  transition: background 0.1s;
-}
-.touch-btn:active, .touch-btn.pressed { background:rgba(224,192,96,0.45); border-color:rgba(224,192,96,0.7); }
-.touch-btn.small { width:44px; height:44px; font-size:14px; }
-#btnLeft { bottom:18px; left:14px; }
-#btnRight { bottom:18px; left:84px; }
-#btnAbility { bottom:18px; right:14px; }
-#btnShop { bottom:18px; right:72px; }
+/* ── MOBILE TOUCH HINTS ── */
+#touchHints { display:none; position:absolute; bottom:12px; left:0; right:0; z-index:15; pointer-events:none; text-align:center; }
+#touchHints span { font-size:8px; color:rgba(224,192,96,0.5); letter-spacing:1px; }
 @media (max-width: 600px) {
-  #touchControls { display:block !important; }
+  #touchHints { display:block !important; }
   #wrap { border:none; box-shadow:none; }
 }
 
