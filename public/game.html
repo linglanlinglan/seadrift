@@ -12,23 +12,11 @@ html, body { width:100%; height:100%; background:#040c14; display:flex; align-it
 #wrap { position:relative; display:inline-block; border:4px solid #1a3a4a; box-shadow:0 0 40px rgba(0,150,200,0.15), 0 0 80px rgba(0,0,0,0.8); }
 canvas { display:block; image-rendering:pixelated; background:#091e30; }
 
-/* ── TOUCH CONTROLS ── */
-#touchControls { display:none; position:absolute; bottom:0; left:0; right:0; z-index:15; pointer-events:none; }
-.touch-btn {
-  pointer-events:all; position:absolute; display:flex; align-items:center; justify-content:center;
-  background:rgba(224,192,96,0.15); border:2px solid rgba(224,192,96,0.35); border-radius:50%;
-  color:#e0c060; font-size:18px; text-shadow:1px 1px 0 #000;
-  width:56px; height:56px; -webkit-tap-highlight-color:transparent;
-  transition: background 0.1s;
-}
-.touch-btn:active, .touch-btn.pressed { background:rgba(224,192,96,0.45); border-color:rgba(224,192,96,0.7); }
-.touch-btn.small { width:44px; height:44px; font-size:14px; }
-#btnLeft { bottom:18px; left:14px; }
-#btnRight { bottom:18px; left:84px; }
-#btnAbility { bottom:18px; right:14px; }
-#btnShop { bottom:18px; right:72px; }
+/* ── MOBILE TOUCH HINTS ── */
+#touchHints { display:none; position:absolute; bottom:12px; left:0; right:0; z-index:15; pointer-events:none; text-align:center; }
+#touchHints span { font-size:8px; color:rgba(224,192,96,0.5); letter-spacing:1px; }
 @media (max-width: 600px) {
-  #touchControls { display:block !important; }
+  #touchHints { display:block !important; }
   #wrap { border:none; box-shadow:none; }
 }
 
@@ -255,12 +243,9 @@ canvas { display:block; image-rendering:pixelated; background:#091e30; }
   </div>
 </div>
 
-<!-- ── TOUCH CONTROLS ── -->
-<div id="touchControls">
-  <div id="btnLeft" class="touch-btn">◀</div>
-  <div id="btnRight" class="touch-btn">▶</div>
-  <div id="btnAbility" class="touch-btn">⚡</div>
-  <div id="btnShop" class="touch-btn small">🛒</div>
+<!-- ── TOUCH HINTS ── -->
+<div id="touchHints">
+  <span>DRAG TO STEER · TAP TO USE ABILITY · DOUBLE-TAP FOR SHOP</span>
 </div>
 
 </div><!-- end #wrap -->
@@ -736,9 +721,15 @@ function update(){
   const sf=Math.max(38,90-getDiff()*8);
   if(G.spawnTimer>=sf){spawnEnemy();G.spawnTimer=0;}
 
-  // steer
+  // steer (keyboard)
   if(G.keys['ArrowLeft'])  G.ship.x-=G.ship.sideSpeed;
   if(G.keys['ArrowRight']) G.ship.x+=G.ship.sideSpeed;
+  // steer (touch — smooth follow finger)
+  if(G.ship.touchTargetX != null) {
+    const dx = G.ship.touchTargetX - G.ship.x;
+    const step = Math.min(Math.abs(dx), G.ship.sideSpeed * 1.5);
+    G.ship.x += Math.sign(dx) * step;
+  }
   G.ship.x=Math.max(22,Math.min(W-22,G.ship.x));
 
   firePlayer();
@@ -978,33 +969,61 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{G.keys[e.key]=false;});
 
-// ── TOUCH INPUT ──
+// ── TOUCH INPUT (drag to steer, tap for ability, double-tap for shop) ──
 (function(){
-  const btnL=document.getElementById('btnLeft');
-  const btnR=document.getElementById('btnRight');
-  const btnA=document.getElementById('btnAbility');
-  const btnS=document.getElementById('btnShop');
+  let touchActive = false;
+  let lastTapTime = 0;
 
-  function tstart(key,btn){return function(e){e.preventDefault();G.keys[key]=true;btn.classList.add('pressed');};}
-  function tend(key,btn){return function(e){e.preventDefault();G.keys[key]=false;btn.classList.remove('pressed');};}
+  function getTouchX(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0] || e.changedTouches[0];
+    // Convert screen touch X to game canvas X
+    return ((touch.clientX - rect.left) / rect.width) * W;
+  }
 
-  btnL.addEventListener('touchstart',tstart('ArrowLeft',btnL),{passive:false});
-  btnL.addEventListener('touchend',tend('ArrowLeft',btnL),{passive:false});
-  btnL.addEventListener('touchcancel',tend('ArrowLeft',btnL),{passive:false});
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    if (!G.running && !G.shopOpen) return;
 
-  btnR.addEventListener('touchstart',tstart('ArrowRight',btnR),{passive:false});
-  btnR.addEventListener('touchend',tend('ArrowRight',btnR),{passive:false});
-  btnR.addEventListener('touchcancel',tend('ArrowRight',btnR),{passive:false});
+    const now = Date.now();
+    if (now - lastTapTime < 300) {
+      // Double-tap → toggle shop
+      if (G.running || G.shopOpen) toggleShop();
+      lastTapTime = 0;
+      return;
+    }
+    lastTapTime = now;
 
-  btnA.addEventListener('touchstart',function(e){e.preventDefault();btnA.classList.add('pressed');useAbility();},{passive:false});
-  btnA.addEventListener('touchend',function(e){e.preventDefault();btnA.classList.remove('pressed');},{passive:false});
+    touchActive = true;
+    // Move ship toward finger immediately
+    G.ship.touchTargetX = getTouchX(e);
+  }, {passive:false});
 
-  btnS.addEventListener('touchstart',function(e){e.preventDefault();btnS.classList.add('pressed');if(G.running||G.shopOpen)toggleShop();},{passive:false});
-  btnS.addEventListener('touchend',function(e){e.preventDefault();btnS.classList.remove('pressed');},{passive:false});
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (!touchActive) return;
+    G.ship.touchTargetX = getTouchX(e);
+  }, {passive:false});
 
-  // Prevent default on canvas touch to avoid scrolling
-  canvas.addEventListener('touchstart',function(e){e.preventDefault();},{passive:false});
-  canvas.addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
+  canvas.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    touchActive = false;
+    G.ship.touchTargetX = null;
+
+    // Single tap (detected after short delay) → use ability
+    const tapTime = lastTapTime;
+    setTimeout(function() {
+      if (lastTapTime === tapTime && lastTapTime !== 0) {
+        useAbility();
+      }
+    }, 310);
+  }, {passive:false});
+
+  canvas.addEventListener('touchcancel', function(e) {
+    e.preventDefault();
+    touchActive = false;
+    G.ship.touchTargetX = null;
+  }, {passive:false});
 })();
 
 // ── SHOP ──
@@ -1106,7 +1125,7 @@ const TUT_STEPS = [
     icon:'⬅️➡️',
     title:'STEERING',
     body: isMob
-      ? `Tap and hold the <b>◀</b> and <b>▶</b> buttons to steer.\nDodge enemy fire and avoid being overwhelmed.\nTry it now — the game is running!`
+      ? `<b>Drag your finger</b> on the screen to steer.\nYour ship follows your finger.\nDodge enemy fire and avoid being overwhelmed.\nTry it now!`
       : `Press <span class="key">←</span> and <span class="key">→</span> to steer left and right.\nDodge enemy fire and avoid being overwhelmed.\nTry it now — the game is running!`,
     highlight:'none',
   },
@@ -1120,7 +1139,7 @@ const TUT_STEPS = [
     icon:'⚡',
     title:'SPECIAL ABILITY',
     body: isMob
-      ? `Your <b>Special</b> bar charges as you kill enemies.\nWhen full, tap the <b>⚡</b> button to unleash it.\nStart with BARRAGE — 10 cannonballs at once!`
+      ? `Your <b>Special</b> bar charges as you kill enemies.\nWhen full, <b>tap the screen</b> (quick tap) to unleash it.\nStart with BARRAGE — 10 cannonballs at once!`
       : `Your <b>Special</b> bar charges as you kill enemies.\nWhen full, press <span class="key">↑</span> or <span class="key">E</span> to unleash it.\nStart with BARRAGE — 10 cannonballs at once!`,
     highlight:'ability',
   },
@@ -1128,7 +1147,7 @@ const TUT_STEPS = [
     icon:'📦',
     title:'OBJECTS & SHOP',
     body: isMob
-      ? `Shoot <b>📦 crates</b> for gold.\nSail through <b>⚡ ❤️ 🛡 power-ups</b> for instant buffs.\nTap the <b>🛒</b> button to open the <b>upgrade shop</b>.`
+      ? `Shoot <b>📦 crates</b> for gold.\nSail through <b>⚡ ❤️ 🛡 power-ups</b> for instant buffs.\n<b>Double-tap</b> the screen to open the <b>upgrade shop</b>.`
       : `Shoot <b>📦 crates</b> for gold.\nSail through <b>⚡ ❤️ 🛡 power-ups</b> for instant buffs.\nPress <span class="key">G</span> anytime to open the <b>upgrade shop</b>.`,
     highlight:'none',
   },
