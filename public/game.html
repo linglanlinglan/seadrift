@@ -913,7 +913,8 @@ function draw(){
   ctx.strokeStyle=cp>=1?'#60ffff':'#1a3a5a';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw2,bh);
   ctx.fillStyle=cp>=1?'#fff':'#1a5070';
   ctx.font='6px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(cp>=1?getAbilityName()+' READY! [UP/E]':getAbilityName()+' '+Math.floor(cp*100)+'%',bx+bw2/2,by+bh/2+1);
+  const mobHint = window.innerWidth <= 600;
+  ctx.fillText(cp>=1?getAbilityName()+' READY!'+(mobHint?' [⚡]':' [UP/E]'):getAbilityName()+' '+Math.floor(cp*100)+'%',bx+bw2/2,by+bh/2+1);
 
   // rapid fire badge
   if(G.rapidTimer>0){
@@ -922,9 +923,11 @@ function draw(){
     ctx.fillText('RAPID '+Math.ceil(G.rapidTimer/60)+'s',8,H-18);
   }
 
-  // G hint
-  ctx.fillStyle='rgba(40,80,100,0.7)';ctx.font='6px '+FONT;ctx.textAlign='right';ctx.textBaseline='alphabetic';
-  ctx.fillText('[G] SHOP',W-5,H-18);
+  // G hint (hide on mobile since touch button exists)
+  if(!mobHint){
+    ctx.fillStyle='rgba(40,80,100,0.7)';ctx.font='6px '+FONT;ctx.textAlign='right';ctx.textBaseline='alphabetic';
+    ctx.fillText('[G] SHOP',W-5,H-18);
+  }
 
   ctx.restore();
 }
