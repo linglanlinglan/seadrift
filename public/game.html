@@ -586,7 +586,9 @@ const G={
   }
 };
 
-function getDiff(){return 1+Math.min(G.dist/900,5.5);}
+function getDiff(){return 1+Math.min(G.dist/450,8);}
+function getSpeedMult(){return 1+Math.min(getDiff()*0.12,1.5);} // enemies move faster over time
+function getAtkMult(){return 1+Math.min((getDiff()-1)*0.15,2);} // enemies hit harder over time
 
 // ── ABILITIES ──
 const ABILITY_NAMES=['BARRAGE','SHIELD','MAELSTROM'];
@@ -628,7 +630,7 @@ function spawnEnemy(){
   // sc starts at 0 so base HP is unchanged at dist=0, then scales up with distance.
   // Early game (dist<100): all enemies at base HP — crabs/jellies die in 1 hit.
   // By dist~900 (d≈2): enemies have ~1.5× HP. By dist~4500 (d≈6): ~3× HP.
-  const sc=Math.max(0,(d-1)*0.5);
+  const sc=Math.max(0,(d-1)*0.7);
   let x,y;
   const r=Math.random();
   if(r<0.65){x=24+Math.random()*(W-48);y=-55;}
@@ -660,7 +662,8 @@ function firePlayer(){
 function fireEnemy(e){
   if(!e.fireMs||e.stunned>0) return;
   const now=Date.now();
-  if(now-e.lastFire<e.fireMs) return;
+  const scaledFireMs = Math.max(e.fireMs * 0.4, e.fireMs / getSpeedMult());
+  if(now-e.lastFire<scaledFireMs) return;
   e.lastFire=now;
   const dx=G.ship.x-e.x,dy=G.ship.y-e.y,d=Math.sqrt(dx*dx+dy*dy)||1;
   if(e.multi){[-0.32,0,0.32].forEach(off=>{const a=Math.atan2(dy,dx)+off;G.bullets.push({x:e.x,y:e.y+8,vx:Math.cos(a)*3.6,vy:Math.sin(a)*3.6,dmg:e.atk*0.7,own:'e',life:1});});}
@@ -679,7 +682,7 @@ function update(){
   G.distRaw+=scroll;
   G.dist=G.distRaw/30;
   G.score+=Math.ceil(scroll*0.5);
-  G.scrollSpeed=2.0+Math.min(G.dist/300,3.5);
+  G.scrollSpeed=2.0+Math.min(G.dist/200,5.0);
   G.scrollOff=(G.scrollOff||0)+scroll;
 
   // timers
@@ -718,8 +721,10 @@ function update(){
 
   // spawn
   G.spawnTimer++;
-  const sf=Math.max(38,90-getDiff()*8);
+  const sf=Math.max(22,80-getDiff()*7);
   if(G.spawnTimer>=sf){spawnEnemy();G.spawnTimer=0;}
+  // Extra spawn at high difficulty — occasional double spawns
+  if(getDiff()>3 && G.spawnTimer===Math.floor(sf/2) && Math.random()<0.3) spawnEnemy();
 
   // steer (keyboard)
   if(G.keys['ArrowLeft'])  G.ship.x-=G.ship.sideSpeed;
@@ -746,11 +751,11 @@ function update(){
         e.chargeVx=dx/d*4;e.chargeVy=dy/d*4;
         spawnFloat(e.x,e.y,'CHARGE!','#ff4020');
       }
-      if(e.chargeTarget){e.x+=e.chargeVx;e.y+=e.chargeVy;}
-      else{e.x+=Math.sin(e.wobble)*0.8;e.y+=e.speed*0.4;}
+    if(e.chargeTarget){e.x+=e.chargeVx*getSpeedMult();e.y+=e.chargeVy*getSpeedMult();}
+      else{e.x+=Math.sin(e.wobble)*0.8;e.y+=e.speed*0.4*getSpeedMult();}
     } else {
       e.x+=Math.sin(e.wobble)*0.9;
-      e.y+=e.speed*0.4;
+      e.y+=e.speed*0.4*getSpeedMult();
     }
     fireEnemy(e);
     if(e.y>H+55){
@@ -780,7 +785,7 @@ function update(){
       if(dx*dx+dy*dy<28*28){
         b.life=0;
         if(G.shieldActive){spawnPx(G.ship.x,G.ship.y,'#4080ff',7);AU.SFX.hit();}
-        else{G.health-=b.dmg;shake(b.dmg>14?4:2);AU.SFX.playerHit();spawnFloat(G.ship.x,G.ship.y,'-'+b.dmg,'#ff6040');spawnPx(G.ship.x,G.ship.y,'#ff4020',5);if(b.poison&&!G.poisoned){G.poisoned=true;G.poisonTimer=360;spawnFloat(G.ship.x,G.ship.y,'POISONED!','#80ff40');}}
+        else{const atkDmg=Math.ceil(b.dmg*getAtkMult());G.health-=atkDmg;shake(atkDmg>14?4:2);AU.SFX.playerHit();spawnFloat(G.ship.x,G.ship.y,'-'+b.dmg,'#ff6040');spawnPx(G.ship.x,G.ship.y,'#ff4020',5);if(b.poison&&!G.poisoned){G.poisoned=true;G.poisonTimer=360;spawnFloat(G.ship.x,G.ship.y,'POISONED!','#80ff40');}}
       }
     }
   });
