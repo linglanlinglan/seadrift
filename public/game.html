@@ -975,6 +975,35 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{G.keys[e.key]=false;});
 
+// ── TOUCH INPUT ──
+(function(){
+  const btnL=document.getElementById('btnLeft');
+  const btnR=document.getElementById('btnRight');
+  const btnA=document.getElementById('btnAbility');
+  const btnS=document.getElementById('btnShop');
+
+  function tstart(key,btn){return function(e){e.preventDefault();G.keys[key]=true;btn.classList.add('pressed');};}
+  function tend(key,btn){return function(e){e.preventDefault();G.keys[key]=false;btn.classList.remove('pressed');};}
+
+  btnL.addEventListener('touchstart',tstart('ArrowLeft',btnL),{passive:false});
+  btnL.addEventListener('touchend',tend('ArrowLeft',btnL),{passive:false});
+  btnL.addEventListener('touchcancel',tend('ArrowLeft',btnL),{passive:false});
+
+  btnR.addEventListener('touchstart',tstart('ArrowRight',btnR),{passive:false});
+  btnR.addEventListener('touchend',tend('ArrowRight',btnR),{passive:false});
+  btnR.addEventListener('touchcancel',tend('ArrowRight',btnR),{passive:false});
+
+  btnA.addEventListener('touchstart',function(e){e.preventDefault();btnA.classList.add('pressed');useAbility();},{passive:false});
+  btnA.addEventListener('touchend',function(e){e.preventDefault();btnA.classList.remove('pressed');},{passive:false});
+
+  btnS.addEventListener('touchstart',function(e){e.preventDefault();btnS.classList.add('pressed');if(G.running||G.shopOpen)toggleShop();},{passive:false});
+  btnS.addEventListener('touchend',function(e){e.preventDefault();btnS.classList.remove('pressed');},{passive:false});
+
+  // Prevent default on canvas touch to avoid scrolling
+  canvas.addEventListener('touchstart',function(e){e.preventDefault();},{passive:false});
+  canvas.addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
+})();
+
 // ── SHOP ──
 function toggleShop(){if(G.shopOpen)closeShop();else openShop();}
 function openShop(){
