@@ -963,33 +963,61 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{G.keys[e.key]=false;});
 
-// ── TOUCH INPUT ──
+// ── TOUCH INPUT (drag to steer, tap for ability, double-tap for shop) ──
 (function(){
-  const btnL=document.getElementById('btnLeft');
-  const btnR=document.getElementById('btnRight');
-  const btnA=document.getElementById('btnAbility');
-  const btnS=document.getElementById('btnShop');
+  let touchActive = false;
+  let lastTapTime = 0;
 
-  function tstart(key,btn){return function(e){e.preventDefault();G.keys[key]=true;btn.classList.add('pressed');};}
-  function tend(key,btn){return function(e){e.preventDefault();G.keys[key]=false;btn.classList.remove('pressed');};}
+  function getTouchX(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0] || e.changedTouches[0];
+    // Convert screen touch X to game canvas X
+    return ((touch.clientX - rect.left) / rect.width) * W;
+  }
 
-  btnL.addEventListener('touchstart',tstart('ArrowLeft',btnL),{passive:false});
-  btnL.addEventListener('touchend',tend('ArrowLeft',btnL),{passive:false});
-  btnL.addEventListener('touchcancel',tend('ArrowLeft',btnL),{passive:false});
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    if (!G.running && !G.shopOpen) return;
 
-  btnR.addEventListener('touchstart',tstart('ArrowRight',btnR),{passive:false});
-  btnR.addEventListener('touchend',tend('ArrowRight',btnR),{passive:false});
-  btnR.addEventListener('touchcancel',tend('ArrowRight',btnR),{passive:false});
+    const now = Date.now();
+    if (now - lastTapTime < 300) {
+      // Double-tap → toggle shop
+      if (G.running || G.shopOpen) toggleShop();
+      lastTapTime = 0;
+      return;
+    }
+    lastTapTime = now;
 
-  btnA.addEventListener('touchstart',function(e){e.preventDefault();btnA.classList.add('pressed');useAbility();},{passive:false});
-  btnA.addEventListener('touchend',function(e){e.preventDefault();btnA.classList.remove('pressed');},{passive:false});
+    touchActive = true;
+    // Move ship toward finger immediately
+    G.ship.touchTargetX = getTouchX(e);
+  }, {passive:false});
 
-  btnS.addEventListener('touchstart',function(e){e.preventDefault();btnS.classList.add('pressed');if(G.running||G.shopOpen)toggleShop();},{passive:false});
-  btnS.addEventListener('touchend',function(e){e.preventDefault();btnS.classList.remove('pressed');},{passive:false});
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (!touchActive) return;
+    G.ship.touchTargetX = getTouchX(e);
+  }, {passive:false});
 
-  // Prevent default on canvas touch to avoid scrolling
-  canvas.addEventListener('touchstart',function(e){e.preventDefault();},{passive:false});
-  canvas.addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
+  canvas.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    touchActive = false;
+    G.ship.touchTargetX = null;
+
+    // Single tap (detected after short delay) → use ability
+    const tapTime = lastTapTime;
+    setTimeout(function() {
+      if (lastTapTime === tapTime && lastTapTime !== 0) {
+        useAbility();
+      }
+    }, 310);
+  }, {passive:false});
+
+  canvas.addEventListener('touchcancel', function(e) {
+    e.preventDefault();
+    touchActive = false;
+    G.ship.touchTargetX = null;
+  }, {passive:false});
 })();
 
 // ── SHOP ──
