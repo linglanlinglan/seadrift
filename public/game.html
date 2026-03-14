@@ -2,14 +2,35 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Sea Drift Survive — Captain's Edition</title>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; image-rendering:pixelated; }
-html, body { width:100%; height:100%; background:#040c14; display:flex; align-items:center; justify-content:center; overflow:hidden; font-family:'Silkscreen', cursive; }
+html, body { width:100%; height:100%; background:#040c14; display:flex; align-items:center; justify-content:center; overflow:hidden; font-family:'Silkscreen', cursive; touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
 
 #wrap { position:relative; display:inline-block; border:4px solid #1a3a4a; box-shadow:0 0 40px rgba(0,150,200,0.15), 0 0 80px rgba(0,0,0,0.8); }
 canvas { display:block; image-rendering:pixelated; background:#091e30; }
+
+/* ── TOUCH CONTROLS ── */
+#touchControls { display:none; position:absolute; bottom:0; left:0; right:0; z-index:15; pointer-events:none; }
+.touch-btn {
+  pointer-events:all; position:absolute; display:flex; align-items:center; justify-content:center;
+  background:rgba(224,192,96,0.15); border:2px solid rgba(224,192,96,0.35); border-radius:50%;
+  color:#e0c060; font-size:18px; text-shadow:1px 1px 0 #000;
+  width:56px; height:56px; -webkit-tap-highlight-color:transparent;
+  transition: background 0.1s;
+}
+.touch-btn:active, .touch-btn.pressed { background:rgba(224,192,96,0.45); border-color:rgba(224,192,96,0.7); }
+.touch-btn.small { width:44px; height:44px; font-size:14px; }
+#btnLeft { bottom:18px; left:14px; }
+#btnRight { bottom:18px; left:84px; }
+#btnAbility { bottom:18px; right:14px; }
+#btnShop { bottom:18px; right:72px; }
+@media (max-width: 600px) {
+  #touchControls { display:block !important; }
+  #wrap { border:none; box-shadow:none; }
+}
 
 /* ── HUD ── */
 #hud { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start; padding:10px 12px; pointer-events:none; z-index:10; gap:6px; }
@@ -234,6 +255,14 @@ canvas { display:block; image-rendering:pixelated; background:#091e30; }
   </div>
 </div>
 
+<!-- ── TOUCH CONTROLS ── -->
+<div id="touchControls">
+  <div id="btnLeft" class="touch-btn">◀</div>
+  <div id="btnRight" class="touch-btn">▶</div>
+  <div id="btnAbility" class="touch-btn">⚡</div>
+  <div id="btnShop" class="touch-btn small">🛒</div>
+</div>
+
 </div><!-- end #wrap -->
 
 <script>
@@ -244,8 +273,17 @@ const W = 360, H = 540;
 canvas.width = W; canvas.height = H;
 
 function applyScale(){
-  const s=Math.max(1,Math.min(Math.floor(Math.min(window.innerWidth/W,(window.innerHeight-20)/H)),3));
-  canvas.style.width=W*s+'px'; canvas.style.height=H*s+'px';
+  const isMobile = window.innerWidth <= 600;
+  if(isMobile){
+    const sx = window.innerWidth / W;
+    const sy = window.innerHeight / H;
+    const s = Math.min(sx, sy);
+    canvas.style.width = Math.floor(W*s)+'px';
+    canvas.style.height = Math.floor(H*s)+'px';
+  } else {
+    const s=Math.max(1,Math.min(Math.floor(Math.min(window.innerWidth/W,(window.innerHeight-20)/H)),3));
+    canvas.style.width=W*s+'px'; canvas.style.height=H*s+'px';
+  }
 }
 applyScale(); window.addEventListener('resize',applyScale);
 
@@ -875,7 +913,8 @@ function draw(){
   ctx.strokeStyle=cp>=1?'#60ffff':'#1a3a5a';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw2,bh);
   ctx.fillStyle=cp>=1?'#fff':'#1a5070';
   ctx.font='6px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(cp>=1?getAbilityName()+' READY! [UP/E]':getAbilityName()+' '+Math.floor(cp*100)+'%',bx+bw2/2,by+bh/2+1);
+  const mobHint = window.innerWidth <= 600;
+  ctx.fillText(cp>=1?getAbilityName()+' READY!'+(mobHint?' [⚡]':' [UP/E]'):getAbilityName()+' '+Math.floor(cp*100)+'%',bx+bw2/2,by+bh/2+1);
 
   // rapid fire badge
   if(G.rapidTimer>0){
@@ -884,9 +923,11 @@ function draw(){
     ctx.fillText('RAPID '+Math.ceil(G.rapidTimer/60)+'s',8,H-18);
   }
 
-  // G hint
-  ctx.fillStyle='rgba(40,80,100,0.7)';ctx.font='6px '+FONT;ctx.textAlign='right';ctx.textBaseline='alphabetic';
-  ctx.fillText('[G] SHOP',W-5,H-18);
+  // G hint (hide on mobile since touch button exists)
+  if(!mobHint){
+    ctx.fillStyle='rgba(40,80,100,0.7)';ctx.font='6px '+FONT;ctx.textAlign='right';ctx.textBaseline='alphabetic';
+    ctx.fillText('[G] SHOP',W-5,H-18);
+  }
 
   ctx.restore();
 }
@@ -936,6 +977,35 @@ document.addEventListener('keydown',e=>{
   if(e.key==='m'||e.key==='M') toggleMuteBtn();
 });
 document.addEventListener('keyup',e=>{G.keys[e.key]=false;});
+
+// ── TOUCH INPUT ──
+(function(){
+  const btnL=document.getElementById('btnLeft');
+  const btnR=document.getElementById('btnRight');
+  const btnA=document.getElementById('btnAbility');
+  const btnS=document.getElementById('btnShop');
+
+  function tstart(key,btn){return function(e){e.preventDefault();G.keys[key]=true;btn.classList.add('pressed');};}
+  function tend(key,btn){return function(e){e.preventDefault();G.keys[key]=false;btn.classList.remove('pressed');};}
+
+  btnL.addEventListener('touchstart',tstart('ArrowLeft',btnL),{passive:false});
+  btnL.addEventListener('touchend',tend('ArrowLeft',btnL),{passive:false});
+  btnL.addEventListener('touchcancel',tend('ArrowLeft',btnL),{passive:false});
+
+  btnR.addEventListener('touchstart',tstart('ArrowRight',btnR),{passive:false});
+  btnR.addEventListener('touchend',tend('ArrowRight',btnR),{passive:false});
+  btnR.addEventListener('touchcancel',tend('ArrowRight',btnR),{passive:false});
+
+  btnA.addEventListener('touchstart',function(e){e.preventDefault();btnA.classList.add('pressed');useAbility();},{passive:false});
+  btnA.addEventListener('touchend',function(e){e.preventDefault();btnA.classList.remove('pressed');},{passive:false});
+
+  btnS.addEventListener('touchstart',function(e){e.preventDefault();btnS.classList.add('pressed');if(G.running||G.shopOpen)toggleShop();},{passive:false});
+  btnS.addEventListener('touchend',function(e){e.preventDefault();btnS.classList.remove('pressed');},{passive:false});
+
+  // Prevent default on canvas touch to avoid scrolling
+  canvas.addEventListener('touchstart',function(e){e.preventDefault();},{passive:false});
+  canvas.addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
+})();
 
 // ── SHOP ──
 function toggleShop(){if(G.shopOpen)closeShop();else openShop();}
@@ -1024,6 +1094,7 @@ function goMainMenu(){
 }
 
 // ── TUTORIAL ──
+const isMob = window.innerWidth <= 600;
 const TUT_STEPS = [
   {
     icon:'🚢',
@@ -1034,7 +1105,9 @@ const TUT_STEPS = [
   {
     icon:'⬅️➡️',
     title:'STEERING',
-    body:`Press <span class="key">←</span> and <span class="key">→</span> to steer left and right.\nDodge enemy fire and avoid being overwhelmed.\nTry it now — the game is running!`,
+    body: isMob
+      ? `Tap and hold the <b>◀</b> and <b>▶</b> buttons to steer.\nDodge enemy fire and avoid being overwhelmed.\nTry it now — the game is running!`
+      : `Press <span class="key">←</span> and <span class="key">→</span> to steer left and right.\nDodge enemy fire and avoid being overwhelmed.\nTry it now — the game is running!`,
     highlight:'none',
   },
   {
@@ -1046,13 +1119,17 @@ const TUT_STEPS = [
   {
     icon:'⚡',
     title:'SPECIAL ABILITY',
-    body:`Your <b>Special</b> bar charges as you kill enemies.\nWhen full, press <span class="key">↑</span> or <span class="key">E</span> to unleash it.\nStart with BARRAGE — 10 cannonballs at once!`,
+    body: isMob
+      ? `Your <b>Special</b> bar charges as you kill enemies.\nWhen full, tap the <b>⚡</b> button to unleash it.\nStart with BARRAGE — 10 cannonballs at once!`
+      : `Your <b>Special</b> bar charges as you kill enemies.\nWhen full, press <span class="key">↑</span> or <span class="key">E</span> to unleash it.\nStart with BARRAGE — 10 cannonballs at once!`,
     highlight:'ability',
   },
   {
     icon:'📦',
     title:'OBJECTS & SHOP',
-    body:`Shoot <b>📦 crates</b> for gold.\nSail through <b>⚡ ❤️ 🛡 power-ups</b> for instant buffs.\nPress <span class="key">G</span> anytime to open the <b>upgrade shop</b>.`,
+    body: isMob
+      ? `Shoot <b>📦 crates</b> for gold.\nSail through <b>⚡ ❤️ 🛡 power-ups</b> for instant buffs.\nTap the <b>🛒</b> button to open the <b>upgrade shop</b>.`
+      : `Shoot <b>📦 crates</b> for gold.\nSail through <b>⚡ ❤️ 🛡 power-ups</b> for instant buffs.\nPress <span class="key">G</span> anytime to open the <b>upgrade shop</b>.`,
     highlight:'none',
   },
 ];
