@@ -721,9 +721,15 @@ function update(){
   const sf=Math.max(38,90-getDiff()*8);
   if(G.spawnTimer>=sf){spawnEnemy();G.spawnTimer=0;}
 
-  // steer
+  // steer (keyboard)
   if(G.keys['ArrowLeft'])  G.ship.x-=G.ship.sideSpeed;
   if(G.keys['ArrowRight']) G.ship.x+=G.ship.sideSpeed;
+  // steer (touch — smooth follow finger)
+  if(G.ship.touchTargetX != null) {
+    const dx = G.ship.touchTargetX - G.ship.x;
+    const step = Math.min(Math.abs(dx), G.ship.sideSpeed * 1.5);
+    G.ship.x += Math.sign(dx) * step;
+  }
   G.ship.x=Math.max(22,Math.min(W-22,G.ship.x));
 
   firePlayer();
