@@ -662,7 +662,8 @@ function firePlayer(){
 function fireEnemy(e){
   if(!e.fireMs||e.stunned>0) return;
   const now=Date.now();
-  if(now-e.lastFire<e.fireMs) return;
+  const scaledFireMs = Math.max(e.fireMs * 0.4, e.fireMs / getSpeedMult());
+  if(now-e.lastFire<scaledFireMs) return;
   e.lastFire=now;
   const dx=G.ship.x-e.x,dy=G.ship.y-e.y,d=Math.sqrt(dx*dx+dy*dy)||1;
   if(e.multi){[-0.32,0,0.32].forEach(off=>{const a=Math.atan2(dy,dx)+off;G.bullets.push({x:e.x,y:e.y+8,vx:Math.cos(a)*3.6,vy:Math.sin(a)*3.6,dmg:e.atk*0.7,own:'e',life:1});});}
