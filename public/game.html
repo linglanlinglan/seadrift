@@ -720,8 +720,10 @@ function update(){
 
   // spawn
   G.spawnTimer++;
-  const sf=Math.max(38,90-getDiff()*8);
+  const sf=Math.max(22,80-getDiff()*7);
   if(G.spawnTimer>=sf){spawnEnemy();G.spawnTimer=0;}
+  // Extra spawn at high difficulty — occasional double spawns
+  if(getDiff()>3 && G.spawnTimer===Math.floor(sf/2) && Math.random()<0.3) spawnEnemy();
 
   // steer (keyboard)
   if(G.keys['ArrowLeft'])  G.ship.x-=G.ship.sideSpeed;
