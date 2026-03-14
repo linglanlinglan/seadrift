@@ -630,7 +630,7 @@ function spawnEnemy(){
   // sc starts at 0 so base HP is unchanged at dist=0, then scales up with distance.
   // Early game (dist<100): all enemies at base HP — crabs/jellies die in 1 hit.
   // By dist~900 (d≈2): enemies have ~1.5× HP. By dist~4500 (d≈6): ~3× HP.
-  const sc=Math.max(0,(d-1)*0.5);
+  const sc=Math.max(0,(d-1)*0.7);
   let x,y;
   const r=Math.random();
   if(r<0.65){x=24+Math.random()*(W-48);y=-55;}
