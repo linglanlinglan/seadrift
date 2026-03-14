@@ -681,7 +681,7 @@ function update(){
   G.distRaw+=scroll;
   G.dist=G.distRaw/30;
   G.score+=Math.ceil(scroll*0.5);
-  G.scrollSpeed=2.0+Math.min(G.dist/300,3.5);
+  G.scrollSpeed=2.0+Math.min(G.dist/200,5.0);
   G.scrollOff=(G.scrollOff||0)+scroll;
 
   // timers
