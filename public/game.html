@@ -273,8 +273,17 @@ const W = 360, H = 540;
 canvas.width = W; canvas.height = H;
 
 function applyScale(){
-  const s=Math.max(1,Math.min(Math.floor(Math.min(window.innerWidth/W,(window.innerHeight-20)/H)),3));
-  canvas.style.width=W*s+'px'; canvas.style.height=H*s+'px';
+  const isMobile = window.innerWidth <= 600;
+  if(isMobile){
+    const sx = window.innerWidth / W;
+    const sy = window.innerHeight / H;
+    const s = Math.min(sx, sy);
+    canvas.style.width = Math.floor(W*s)+'px';
+    canvas.style.height = Math.floor(H*s)+'px';
+  } else {
+    const s=Math.max(1,Math.min(Math.floor(Math.min(window.innerWidth/W,(window.innerHeight-20)/H)),3));
+    canvas.style.width=W*s+'px'; canvas.style.height=H*s+'px';
+  }
 }
 applyScale(); window.addEventListener('resize',applyScale);
 
